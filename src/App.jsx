@@ -1,33 +1,31 @@
-// src/App.jsx
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-import Home from "./pages/Home";
-import SignIn from "./pages/SignIn";
-import Login from "./pages/LogIn";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import HomePage from './pages/Home';
+import FeedbackPage from './pages/Feedback';
+import Settings from "./pages/Settings";
+import EditProfile from "./pages/EditProfile";
+import UserProfile from "./pages/UserProfile";
+import Profile from './pages/Profile';
 
-function AppWrapper() {
-  const location = useLocation();
-  const isAuthPage = location.pathname === "/signin" || location.pathname === "/login";
 
-  return (
-    <>
-      {!isAuthPage && <Navbar />}
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
-      {!isAuthPage && <Footer />}
-    </>
-  );
-}
+const theme = createTheme();
 
 function App() {
   return (
-    <Router>
-      <AppWrapper />
-    </Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/edit-profile" element={<EditProfile />} />
+          <Route path="/user-profile" element={<UserProfile />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 
