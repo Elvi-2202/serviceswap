@@ -7,7 +7,7 @@ import Settings from "./pages/Settings";
 import EditProfile from "./pages/EditProfile";
 import UserProfile from "./pages/UserProfile";
 import Profile from './pages/Profile';
-
+import Login from './pages/LogIn';
 
 const theme = createTheme();
 
@@ -23,6 +23,7 @@ function App() {
           <Route path="/edit-profile" element={<EditProfile />} />
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </Router>
     </ThemeProvider>
