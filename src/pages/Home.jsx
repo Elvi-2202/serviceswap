@@ -14,7 +14,7 @@ import {
   Box,
   useMediaQuery,
 } from "@mui/material";
-import { motion } from "framer-motion";
+import { motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import "@fontsource/poppins";
 import "../App.css";
 
@@ -42,19 +42,9 @@ const Home = () => {
             component={Link}
             to="/"
           >
-            TROC
+            ServiceSwap
           </Typography>
-          <Box>
-            
-            <Button
-              component={Link}
-              to="/login"
-              variant="contained"
-              sx={{ bgcolor: ACCENT, color: TEXT_COLOR, textTransform: "none" }}
-            >
-              Inscription
-            </Button>
-          </Box>
+          
         </Toolbar>
       </AppBar>
 
@@ -68,40 +58,54 @@ const Home = () => {
             variant={isSmall ? "h4" : "h1"}
             sx={{ mb: 4, fontWeight: 600, color: HEADER_BG }}
           >
-            <span style={{ color: "gray", fontSize: isSmall ? 30 : 40,  textAlign: "center", display: "flex", justifyContent: "center" }}>
-            Échanges Disponibles
-
+            <span style={{ 
+              color: "gray", 
+              fontSize: isSmall ? 30 : 40,  
+              textAlign: "center", 
+              display: "flex", 
+              justifyContent: "center" 
+            }}>
+              Échanges Disponibles
             </span>
           </Typography>
 
           <Grid container spacing={isSmall ? 2 : 4}>
             {services.map((user, idx) => (
               <Grid item xs={12} sm={6} md={4} key={idx}>
-                <Card elevation={3} sx={{ borderRadius: 2 }}>
-                  <CardContent>
-                    <Grid container alignItems="center" spacing={2}>
-                      <Grid item>
-                        <Avatar
-                          sx={{ bgcolor: user.color, width: isSmall ? 40 : 56, height: isSmall ? 40 : 56 }}
-                        >
-                          {user.name.charAt(0)}
-                        </Avatar>
+                <motion.div
+                  whileHover={{ scale: 1.03 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <Card elevation={3} sx={{ borderRadius: 2 }}>
+                    <CardContent>
+                      <Grid container alignItems="center" spacing={2}>
+                        <Grid item>
+                          <Avatar
+                            sx={{ 
+                              bgcolor: user.color, 
+                              width: isSmall ? 40 : 56, 
+                              height: isSmall ? 40 : 56 
+                            }}
+                          >
+                            {user.name.charAt(0)}
+                          </Avatar>
+                        </Grid>
+                        <Grid item>
+                          <Typography sx={{ fontWeight: 600, fontSize: isSmall ? 16 : 18 }}>
+                            {user.name}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                            ⭐ {user.rating}/5
+                          </Typography>
+                        </Grid>
                       </Grid>
-                      <Grid item>
-                        <Typography sx={{ fontWeight: 600, fontSize: isSmall ? 16 : 18 }}>
-                          {user.name}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                          ⭐ {user.rating}/5
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                    <Box mt={2}>
-                      <Typography variant="body2">{user.service1}</Typography>
-                      <Typography variant="body2">{user.service2}</Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
+                      <Box mt={2}>
+                        <Typography variant="body2">{user.service1}</Typography>
+                        <Typography variant="body2">{user.service2}</Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </Grid>
             ))}
           </Grid>

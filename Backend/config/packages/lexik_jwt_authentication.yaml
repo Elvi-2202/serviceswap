@@ -1,0 +1,11 @@
+lexik_jwt_authentication:
+    secret_key: '%kernel.project_dir%/config/jwt/private.pem'  # Chemin absolu recommandé
+    public_key: '%kernel.project_dir%/config/jwt/public.pem'   # Chemin absolu recommandé
+    pass_phrase: '%env(JWT_PASSPHRASE)%'
+    token_ttl: 86400  # Augmentez la durée de vie du token (en secondes, ici 24h)
+    clock_skew: 30    # Marge d'erreur temporelle en secondes
+    token_extractors:
+        authorization_header:    # Activation de l'extraction depuis le header Authorization
+            enabled: true
+            prefix: Bearer
+            name: Authorization

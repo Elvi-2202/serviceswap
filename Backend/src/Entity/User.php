@@ -2,14 +2,16 @@
 
 namespace App\Entity;
 
-use App\Repository\UtilisateurRepository;
+use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 
-#[ORM\Entity(repositoryClass: UtilisateurRepository::class)]
-class Utilisateur
+#[ORM\Entity(repositoryClass: UserRepository::class)]
+class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -19,8 +21,8 @@ class Utilisateur
     #[ORM\Column(length: 255)]
     private ?string $pseudo = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $Email = null;
+    #[ORM\Column(length: 180, unique: true)]
+    private ?string $email = null;
 
     #[ORM\Column(length: 255)]
     private ?string $localisation = null;
@@ -28,27 +30,33 @@ class Utilisateur
     #[ORM\Column(type: Types::TEXT)]
     private ?string $description = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $password = null;
+
+    #[ORM\Column(type: Types::JSON)]
+    private array $roles = [];
+
     /**
      * @var Collection<int, Service>
      */
-    #[ORM\ManyToMany(targetEntity: Service::class, inversedBy: 'utilisateurs')]
-    private Collection $relation;
+    #[ORM\ManyToMany(targetEntity: Service::class, inversedBy: 'users')]
+    private Collection $services; // Renommé 'relation' en 'services'
 
     /**
      * @var Collection<int, Message>
      */
-    #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'relation', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'user', orphanRemoval: true)] // Mappé par 'user' dans Message
     private Collection $messages;
 
     /**
      * @var Collection<int, Evaluation>
      */
-    #[ORM\OneToMany(targetEntity: Evaluation::class, mappedBy: 'relation', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Evaluation::class, mappedBy: 'user', orphanRemoval: true)] // Mappé par 'user' dans Evaluation
     private Collection $evaluations;
 
     public function __construct()
     {
-        $this->relation = new ArrayCollection();
+        $this->services = new ArrayCollection();
         $this->messages = new ArrayCollection();
         $this->evaluations = new ArrayCollection();
     }
@@ -72,12 +80,12 @@ class Utilisateur
 
     public function getEmail(): ?string
     {
-        return $this->Email;
+        return $this->email;
     }
 
-    public function setEmail(string $Email): static
+    public function setEmail(string $email): static
     {
-        $this->Email = $Email;
+        $this->email = $email;
 
         return $this;
     }
@@ -107,25 +115,84 @@ class Utilisateur
     }
 
     /**
-     * @return Collection<int, Service>
+     * @see PasswordAuthenticatedUserInterface
      */
-    public function getRelation(): Collection
+    public function getPassword(): ?string
     {
-        return $this->relation;
+        return $this->password;
     }
 
-    public function addRelation(Service $relation): static
+    public function setPassword(string $password): static
     {
-        if (!$this->relation->contains($relation)) {
-            $this->relation->add($relation);
+        $this->password = $password;
+
+        return $this;
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function getRoles(): array
+    {
+        $roles = $this->roles;
+        // guarantee every user at least has ROLE_USER
+        $roles[] = 'ROLE_USER';
+
+        return array_unique($roles);
+    }
+
+    public function setRoles(array $roles): static
+    {
+        $this->roles = $roles;
+
+        return $this;
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function getSalt(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function eraseCredentials(): void
+    {
+        // If you store any temporary, sensitive data on the user, clear it here
+        // $this->plainPassword = null;
+    }
+
+    /**
+     * @see UserInterface
+     */
+    public function getUserIdentifier(): string
+    {
+        return (string) $this->email;
+    }
+
+    /**
+     * @return Collection<int, Service>
+     */
+    public function getServices(): Collection
+    {
+        return $this->services;
+    }
+
+    public function addService(Service $service): static
+    {
+        if (!$this->services->contains($service)) {
+            $this->services->add($service);
         }
 
         return $this;
     }
 
-    public function removeRelation(Service $relation): static
+    public function removeService(Service $service): static
     {
-        $this->relation->removeElement($relation);
+        $this->services->removeElement($service);
 
         return $this;
     }
@@ -142,7 +209,7 @@ class Utilisateur
     {
         if (!$this->messages->contains($message)) {
             $this->messages->add($message);
-            $message->setRelation($this);
+            $message->setUser($this); // Appel correct de setUser() sur Message
         }
 
         return $this;
@@ -152,8 +219,8 @@ class Utilisateur
     {
         if ($this->messages->removeElement($message)) {
             // set the owning side to null (unless already changed)
-            if ($message->getRelation() === $this) {
-                $message->setRelation(null);
+            if ($message->getUser() === $this) { // Appel correct de getUser() sur Message
+                $message->setUser(null); // Appel correct de setUser() sur Message
             }
         }
 
@@ -172,7 +239,7 @@ class Utilisateur
     {
         if (!$this->evaluations->contains($evaluation)) {
             $this->evaluations->add($evaluation);
-            $evaluation->setRelation($this);
+            $evaluation->setUser($this); // Appel correct de setUser() sur Evaluation
         }
 
         return $this;
@@ -182,8 +249,8 @@ class Utilisateur
     {
         if ($this->evaluations->removeElement($evaluation)) {
             // set the owning side to null (unless already changed)
-            if ($evaluation->getRelation() === $this) {
-                $evaluation->setRelation(null);
+            if ($evaluation->getUser() === $this) { // Appel correct de getUser() sur Evaluation
+                $evaluation->setUser(null); // Appel correct de setUser() sur Evaluation
             }
         }
 

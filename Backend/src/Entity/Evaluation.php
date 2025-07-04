@@ -1,10 +1,11 @@
 <?php
+// src/Entity/Evaluation.php
 
 namespace App\Entity;
 
 use App\Repository\EvaluationRepository;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\DBAL\Types\Types;
 
 #[ORM\Entity(repositoryClass: EvaluationRepository::class)]
 class Evaluation
@@ -15,52 +16,52 @@ class Evaluation
     private ?int $id = null;
 
     #[ORM\Column]
-    private ?int $note = null;
+    private ?int $score = null;
 
-    #[ORM\Column(type: Types::TEXT)]
-    private ?string $commentaire = null;
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $comment = null;
 
-    #[ORM\ManyToOne(inversedBy: 'evaluations')]
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'evaluations')] // Relation ManyToOne vers User
     #[ORM\JoinColumn(nullable: false)]
-    private ?Utilisateur $relation = null;
+    private ?User $user = null; // Propriété 'user' pour stocker l'objet User lié
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getNote(): ?int
+    public function getScore(): ?int
     {
-        return $this->note;
+        return $this->score;
     }
 
-    public function setNote(int $note): static
+    public function setScore(int $score): static
     {
-        $this->note = $note;
+        $this->score = $score;
 
         return $this;
     }
 
-    public function getCommentaire(): ?string
+    public function getComment(): ?string
     {
-        return $this->commentaire;
+        return $this->comment;
     }
 
-    public function setCommentaire(string $commentaire): static
+    public function setComment(?string $comment): static
     {
-        $this->commentaire = $commentaire;
+        $this->comment = $comment;
 
         return $this;
     }
 
-    public function getRelation(): ?Utilisateur
+    public function getUser(): ?User // Getter pour la relation User
     {
-        return $this->relation;
+        return $this->user;
     }
 
-    public function setRelation(?Utilisateur $relation): static
+    public function setUser(?User $user): static // Setter pour la relation User
     {
-        $this->relation = $relation;
+        $this->user = $user;
 
         return $this;
     }

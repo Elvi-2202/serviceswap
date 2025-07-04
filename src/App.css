@@ -410,3 +410,28 @@
       width: 100%;
     }
   }
+  .welcome-container {
+    background-color: #F9FAFB;
+    min-height: 100vh;
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  .navbar {
+    background-color: #1D1E22 !important;
+    padding: 0 16px !important;
+  }
+  
+  .logo {
+    color: #CF6B4D !important;
+    font-weight: 700 !important;
+    text-decoration: none;
+    flex-grow: 1;
+  }
+  
+  .signup-btn {
+    background-color: #CF6B4D !important;
+    color: white !important;
+    text-transform: none !important;
+  }
+  
+  /* ... autres styles ... */

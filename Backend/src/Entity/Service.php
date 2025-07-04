@@ -22,25 +22,27 @@ class Service
     #[ORM\Column(type: Types::TEXT)]
     private ?string $description = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $catégorie = null;
+    // Supprimé car la catégorie est gérée par la relation ManyToOne ci-dessous
+    // #[ORM\Column(length: 255)]
+    // private ?string $catégorie = null;
 
     #[ORM\Column(length: 255)]
     private ?string $statut = null;
 
     /**
-     * @var Collection<int, Utilisateur>
+     * @var Collection<int, User>
      */
-    #[ORM\ManyToMany(targetEntity: Utilisateur::class, mappedBy: 'relation')]
-    private Collection $utilisateurs;
+    #[ORM\ManyToMany(targetEntity: User::class, mappedBy: 'services')] // Mappé par la propriété 'services' dans User
+    private Collection $users;
 
-    #[ORM\ManyToOne(inversedBy: 'services')]
+    // Renommé 'relation' en 'category' pour plus de clarté
+    #[ORM\ManyToOne(inversedBy: 'services')] // 'services' est le nom de la collection dans l'entité Categorie
     #[ORM\JoinColumn(nullable: false)]
-    private ?Categorie $relation = null;
+    private ?Categorie $category = null;
 
     public function __construct()
     {
-        $this->utilisateurs = new ArrayCollection();
+        $this->users = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -72,17 +74,17 @@ class Service
         return $this;
     }
 
-    public function getCatégorie(): ?string
-    {
-        return $this->catégorie;
-    }
+    // Le getter/setter pour 'catégorie' est retiré si la relation ManyToOne est utilisée
+    // public function getCatégorie(): ?string
+    // {
+    //     return $this->catégorie;
+    // }
 
-    public function setCatégorie(string $catégorie): static
-    {
-        $this->catégorie = $catégorie;
-
-        return $this;
-    }
+    // public function setCatégorie(string $catégorie): static
+    // {
+    //     $this->catégorie = $catégorie;
+    //     return $this;
+    // }
 
     public function getStatut(): ?string
     {
@@ -97,40 +99,40 @@ class Service
     }
 
     /**
-     * @return Collection<int, Utilisateur>
+     * @return Collection<int, User>
      */
-    public function getUtilisateurs(): Collection
+    public function getUsers(): Collection
     {
-        return $this->utilisateurs;
+        return $this->users;
     }
 
-    public function addUtilisateur(Utilisateur $utilisateur): static
+    public function addUser(User $user): static
     {
-        if (!$this->utilisateurs->contains($utilisateur)) {
-            $this->utilisateurs->add($utilisateur);
-            $utilisateur->addRelation($this);
+        if (!$this->users->contains($user)) {
+            $this->users->add($user);
+            $user->addService($this); // Correction : Appel à addService() sur l'objet User
         }
 
         return $this;
     }
 
-    public function removeUtilisateur(Utilisateur $utilisateur): static
+    public function removeUser(User $user): static
     {
-        if ($this->utilisateurs->removeElement($utilisateur)) {
-            $utilisateur->removeRelation($this);
+        if ($this->users->removeElement($user)) {
+            $user->removeService($this); // Correction : Appel à removeService() sur l'objet User
         }
 
         return $this;
     }
 
-    public function getRelation(): ?Categorie
+    public function getCategory(): ?Categorie // Getters/Setters pour la relation Categorie
     {
-        return $this->relation;
+        return $this->category;
     }
 
-    public function setRelation(?Categorie $relation): static
+    public function setCategory(?Categorie $category): static
     {
-        $this->relation = $relation;
+        $this->category = $category;
 
         return $this;
     }

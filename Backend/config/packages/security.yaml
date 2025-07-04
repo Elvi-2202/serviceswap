@@ -1,39 +1,73 @@
+# config/packages/security.yaml
 security:
-    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    # Paramètres de hachage des mots de passe. 'auto' est une bonne valeur par défaut.
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
-    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+        App\Entity\User:
+            algorithm: auto
+            cost: 12 # Un coût plus élevé est généralement meilleur pour la sécurité
+
+    # Providers : définit où Symfony trouve les informations utilisateur
     providers:
-        users_in_memory: { memory: null }
+        app_user_provider:
+            entity:
+                class: App\Entity\User # Chemin vers votre classe d'entité User
+                property: email        # Propriété utilisée pour l'identification (email ou pseudo)
+
+    # Firewalls : gèrent comment les requêtes sont authentifiées
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
-            security: false
-        main:
-            lazy: true
-            provider: users_in_memory
+            security: false # Pas de sécurité pour les outils de développement
 
-            # activate different ways to authenticate
-            # https://symfony.com/doc/current/security.html#the-firewall
+        api:
+            pattern: ^/api # Ce pare-feu s'applique à toutes les routes commençant par /api
+            stateless: true # Indique que l'application ne maintient pas de sessions entre les requêtes
 
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
+            # json_login : Configure le point d'accès pour l'authentification (pour obtenir un JWT)
+            json_login:
+                check_path: /api/login_check # L'URL où l'utilisateur envoie ses identifiants (email/password)
+                username_path: email         # Indique à Symfony de chercher 'email' au lieu de 'username'
+                password_path: password      # La clé pour le mot de passe dans la requête JSON
+                success_handler: lexik_jwt_authentication.handler.authentication_success # Gère le succès de l'authentification
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure # Gère l'échec de l'authentification
 
-    # Easy way to control access for large sections of your site
-    # Note: Only the *first* access control that matches will be used
+            # jwt : Active l'authentification JWT pour ce firewall
+            jwt: ~
+            provider: app_user_provider # Le provider à utiliser pour récupérer l'utilisateur
+
+            # ATTENTION : L'option 'refresh_jwt' n'est PAS une option de pare-feu Symfony.
+            # Si vous utilisez un bundle comme GesdinetJWTRefreshTokenBundle, sa configuration
+            # se fait dans un fichier séparé (ex: config/packages/gesdinet_jwt_refresh_token.yaml)
+            # et il fournit sa propre route (ex: /api/token/refresh).
+            # Cette ligne a été supprimée car elle est la cause de l'erreur "Unrecognized option".
+
+    # access_control : Gère les permissions d'accès aux routes
+    # L'ORDRE EST EXTRÊMEMENT IMPORTANT ! Les règles sont lues du haut vers le bas.
+    # La PREMIÈRE règle qui correspond à l'URL et à la méthode est APPLIQUÉE, et les règles suivantes NE SONT PAS évaluées pour cette requête.
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        # 1. Autoriser l'accès à l'endpoint de connexion (login_check) sans authentification JWT.
+        # Utilisez le "$" pour assurer une correspondance exacte du chemin.
+        - { path: ^/api/login_check$, methods: [POST], roles: PUBLIC_ACCESS }
 
+        # 2. Autoriser la création d'utilisateur (POST) sans authentification JWT.
+        # Utilisez le "$" pour assurer une correspondance exacte du chemin.
+        - { path: ^/api/user/user_create$, methods: [POST], roles: PUBLIC_ACCESS }
+
+        # Si vous utilisez GesdinetJWTRefreshTokenBundle, ajoutez sa route de rafraîchissement ici si elle est publique.
+        # - { path: ^/api/token/refresh$, methods: [POST], roles: PUBLIC_ACCESS }
+
+        # 3. Toutes les AUTRES routes sous /api nécessitent une authentification complète (un JWT valide).
+        # Cette règle DOIT IMPÉRATIVEMENT être la DERNIÈRE pour les chemins sous /api,
+        # afin que les règles PUBLIC_ACCESS spécifiques aient la priorité.
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+    # Configuration spécifique pour l'environnement de test (facultatif)
 when@test:
     security:
         password_hashers:
-            # By default, password hashers are resource intensive and take time. This is
-            # important to generate secure password hashes. In tests however, secure hashes
-            # are not important, waste resources and increase test times. The following
-            # reduces the work factor to the lowest possible values.
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto
-                cost: 4 # Lowest possible value for bcrypt
-                time_cost: 3 # Lowest possible value for argon
-                memory_cost: 10 # Lowest possible value for argon
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

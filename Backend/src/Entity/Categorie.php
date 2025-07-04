@@ -1,4 +1,5 @@
 <?php
+// src/Entity/Categorie.php
 
 namespace App\Entity;
 
@@ -16,13 +17,13 @@ class Categorie
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $nom = null;
+    private ?string $name = null; // Nom de la catégorie, par exemple "Plomberie", "Électricité"
 
     /**
      * @var Collection<int, Service>
      */
-    #[ORM\OneToMany(targetEntity: Service::class, mappedBy: 'relation', orphanRemoval: true)]
-    private Collection $services;
+    #[ORM\OneToMany(targetEntity: Service::class, mappedBy: 'category', orphanRemoval: true)] // Mappé par la propriété 'category' dans l'entité Service
+    private Collection $services; // Collection des services appartenant à cette catégorie
 
     public function __construct()
     {
@@ -34,14 +35,14 @@ class Categorie
         return $this->id;
     }
 
-    public function getNom(): ?string
+    public function getName(): ?string
     {
-        return $this->nom;
+        return $this->name;
     }
 
-    public function setNom(string $nom): static
+    public function setName(string $name): static
     {
-        $this->nom = $nom;
+        $this->name = $name;
 
         return $this;
     }
@@ -58,7 +59,7 @@ class Categorie
     {
         if (!$this->services->contains($service)) {
             $this->services->add($service);
-            $service->setRelation($this);
+            $service->setCategory($this); // Assurez-vous d'appeler setCategory sur l'objet Service
         }
 
         return $this;
@@ -68,8 +69,8 @@ class Categorie
     {
         if ($this->services->removeElement($service)) {
             // set the owning side to null (unless already changed)
-            if ($service->getRelation() === $this) {
-                $service->setRelation(null);
+            if ($service->getCategory() === $this) {
+                $service->setCategory(null);
             }
         }
 

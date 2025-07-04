@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -13,7 +13,7 @@ import {
   Button,
   useMediaQuery,
 } from "@mui/material";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import "../App.css";
 
 const ACCENT = "#CF6B4D";
@@ -34,7 +34,21 @@ const Login = () => {
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ name: "", email: "", password: "" });
 
+  const navigate = useNavigate();
+
   const handleTab = (_, newVal) => setTab(newVal);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    // Ici, tu pourrais ajouter la logique d'authentification
+    navigate("/home");
+  };
+
+  const handleSignup = (e) => {
+    e.preventDefault();
+    // Ici, tu pourrais ajouter la logique d'inscription
+    navigate("/home");
+  };
 
   return (
     <Box sx={{ bgcolor: BG, minHeight: "100vh" }}>
@@ -45,7 +59,7 @@ const Login = () => {
               variant={isSmall ? "h6" : "h5"}
               sx={{ color: ACCENT, fontWeight: 600 }}
             >
-              TROC
+              ServiceSwap
             </Typography>
           </Link>
         </Toolbar>
@@ -68,7 +82,7 @@ const Login = () => {
             <Tab label="Inscription" />
           </Tabs>
 
-          <AnimatePresence exitBeforeEnter>
+          <AnimatePresence mode="wait">
             {tab === 0 && (
               <motion.div
                 key="login"
@@ -99,6 +113,7 @@ const Login = () => {
                   variant="contained"
                   fullWidth
                   sx={{ mt: 2, py: 1.5, bgcolor: PRIMARY_BTN, textTransform: "none" }}
+                  onClick={handleLogin}
                 >
                   Se connecter
                 </Button>
@@ -142,6 +157,7 @@ const Login = () => {
                   variant="contained"
                   fullWidth
                   sx={{ mt: 2, py: 1.5, bgcolor: SECONDARY_BTN, textTransform: "none" }}
+                  onClick={handleSignup}
                 >
                   S'inscrire
                 </Button>
