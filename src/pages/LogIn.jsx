@@ -12,6 +12,7 @@ import {
   TextField,
   Button,
   useMediaQuery,
+  Alert, // Import Alert component
 } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion"; // eslint-disable-line no-unused-vars
 import "../App.css";
@@ -33,21 +34,70 @@ const Login = () => {
   const [tab, setTab] = useState(0);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({ name: "", email: "", password: "" });
+  const [message, setMessage] = useState({ type: "", text: "" }); // State for messages
 
   const navigate = useNavigate();
 
-  const handleTab = (_, newVal) => setTab(newVal);
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    // Ici, tu pourrais ajouter la logique d'authentification
-    navigate("/home");
+  const handleTab = (_, newVal) => {
+    setTab(newVal);
+    setMessage({ type: "", text: "" }); // Clear messages when changing tabs
   };
 
-  const handleSignup = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Ici, tu pourrais ajouter la logique d'inscription
-    navigate("/home");
+    setMessage({ type: "", text: "" }); // Clear previous messages
+    try {
+      const response = await fetch("http://localhost:8000/api/login_check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setMessage({ type: "error", text: errorData.message || "Erreur de connexion" });
+        return;
+      }
+
+      const data = await response.json();
+      console.log("Token reçu :", data);
+
+      localStorage.setItem("token", data.token);
+      setMessage({ type: "success", text: "Connexion réussie !" });
+      navigate("/home");
+    } catch (error) {
+      console.error("Erreur serveur :", error);
+      setMessage({ type: "error", text: "Erreur réseau ou serveur. Veuillez vérifier la console pour plus de détails." });
+    }
+  };
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setMessage({ type: "", text: "" }); // Clear previous messages
+    try {
+      const response = await fetch("http://localhost:8000/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signupData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setMessage({ type: "error", text: errorData.message || "Erreur lors de l'inscription" });
+        return;
+      }
+
+      const data = await response.json();
+      localStorage.setItem("token", data.token); // Assuming signup also returns a token
+      setMessage({ type: "success", text: "Inscription réussie ! Vous pouvez maintenant vous connecter." });
+      navigate("/home");
+    } catch (error) {
+      console.error("Erreur serveur :", error);
+      setMessage({ type: "error", text: "Erreur réseau ou serveur. Veuillez vérifier la console pour plus de détails." });
+    }
   };
 
   return (
@@ -82,6 +132,13 @@ const Login = () => {
             <Tab label="Inscription" />
           </Tabs>
 
+          {/* Display messages using Alert component */}
+          {message.text && (
+            <Alert severity={message.type} sx={{ mb: 2, borderRadius: 1 }}>
+              {message.text}
+            </Alert>
+          )}
+
           <AnimatePresence mode="wait">
             {tab === 0 && (
               <motion.div
@@ -98,7 +155,9 @@ const Login = () => {
                   fullWidth
                   margin="normal"
                   value={loginData.email}
-                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, email: e.target.value })
+                  }
                 />
                 <TextField
                   label="Mot de passe"
@@ -107,12 +166,19 @@ const Login = () => {
                   fullWidth
                   margin="normal"
                   value={loginData.password}
-                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                  onChange={(e) =>
+                    setLoginData({ ...loginData, password: e.target.value })
+                  }
                 />
                 <Button
                   variant="contained"
                   fullWidth
-                  sx={{ mt: 2, py: 1.5, bgcolor: PRIMARY_BTN, textTransform: "none" }}
+                  sx={{
+                    mt: 2,
+                    py: 1.5,
+                    bgcolor: PRIMARY_BTN,
+                    textTransform: "none",
+                  }}
                   onClick={handleLogin}
                 >
                   Se connecter
@@ -134,7 +200,9 @@ const Login = () => {
                   fullWidth
                   margin="normal"
                   value={signupData.name}
-                  onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
+                  onChange={(e) =>
+                    setSignupData({ ...signupData, name: e.target.value })
+                  }
                 />
                 <TextField
                   label="Email"
@@ -142,7 +210,9 @@ const Login = () => {
                   fullWidth
                   margin="normal"
                   value={signupData.email}
-                  onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                  onChange={(e) =>
+                    setSignupData({ ...signupData, email: e.target.value })
+                  }
                 />
                 <TextField
                   label="Mot de passe"
@@ -151,12 +221,19 @@ const Login = () => {
                   fullWidth
                   margin="normal"
                   value={signupData.password}
-                  onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                  onChange={(e) =>
+                    setSignupData({ ...signupData, password: e.target.value })
+                  }
                 />
                 <Button
                   variant="contained"
                   fullWidth
-                  sx={{ mt: 2, py: 1.5, bgcolor: SECONDARY_BTN, textTransform: "none" }}
+                  sx={{
+                    mt: 2,
+                    py: 1.5,
+                    bgcolor: SECONDARY_BTN,
+                    textTransform: "none",
+                  }}
                   onClick={handleSignup}
                 >
                   S'inscrire

@@ -9,6 +9,9 @@ import UserProfile from "./pages/UserProfile";
 import Profile from './pages/Profile';
 import Login from './pages/LogIn';
 import Welcome from './pages/welcome';
+import Services from './pages/Services';
+import Troc from './pages/Troc';
+import Notifications from './pages/Notifications';
 
 const theme = createTheme();
 
@@ -29,6 +32,9 @@ function App() {
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/troc" element={<Troc />} />
+          <Route path="/notifications" element={<Notifications />} />
         </Routes>
       </Router>
     </ThemeProvider>
