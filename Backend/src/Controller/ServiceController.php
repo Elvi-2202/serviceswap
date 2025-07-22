@@ -3,79 +3,120 @@
 namespace App\Controller;
 
 use App\Entity\Service;
-use App\Form\ServiceForm;
+use App\Entity\Categorie;
 use App\Repository\ServiceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
-#[Route('/service')]
-final class ServiceController extends AbstractController
+#[Route('/api/services')]
+class ServiceController extends AbstractController
 {
-    #[Route(name: 'app_service_index', methods: ['GET'])]
-    public function index(ServiceRepository $serviceRepository): Response
+    // Lister tous les services
+    #[Route('', name: 'api_services_index', methods: ['GET'])]
+    public function index(ServiceRepository $serviceRepository): JsonResponse
     {
-        return $this->render('service/index.html.twig', [
-            'services' => $serviceRepository->findAll(),
-        ]);
+        $services = $serviceRepository->findAll();
+        $data = [];
+
+        foreach ($services as $service) {
+            $data[] = [
+                'id' => $service->getId(),
+                'titre' => $service->getTitre(),
+                'description' => $service->getDescription(),
+                'statut' => $service->getStatut(),
+                'category' => [
+                    'id' => $service->getCategory()?->getId(),
+                    'name' => $service->getCategory()?->getName(),
+                ],
+            ];
+        }
+
+        return $this->json($data);
     }
 
-    #[Route('/new', name: 'app_service_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    // Créer un nouveau service
+    #[Route('', name: 'api_services_create', methods: ['POST'])]
+    public function create(Request $request, EntityManagerInterface $em): JsonResponse
     {
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['titre'], $data['description'], $data['statut'], $data['category'])) {
+            return $this->json(['error' => 'Champs manquants'], 400);
+        }
+
+        $category = $em->getRepository(Categorie::class)->find($data['category']);
+        if (!$category) {
+            return $this->json(['error' => 'Catégorie invalide'], 404);
+        }
+
         $service = new Service();
-        $form = $this->createForm(ServiceForm::class, $service);
-        $form->handleRequest($request);
+        $service->setTitre($data['titre']);
+        $service->setDescription($data['description']);
+        $service->setStatut($data['statut']);
+        $service->setCategory($category);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($service);
-            $entityManager->flush();
+        $em->persist($service);
+        $em->flush();
 
-            return $this->redirectToRoute('app_service_index', [], Response::HTTP_SEE_OTHER);
-        }
+        return $this->json([
+            'message' => 'Service ajouté avec succès',
+            'id' => $service->getId()
+        ], 201);
+    }
 
-        return $this->render('service/new.html.twig', [
-            'service' => $service,
-            'form' => $form,
+    // Afficher un service
+    #[Route('/{id}', name: 'api_services_show', methods: ['GET'])]
+    public function show(Service $service): JsonResponse
+    {
+        return $this->json([
+            'id' => $service->getId(),
+            'titre' => $service->getTitre(),
+            'description' => $service->getDescription(),
+            'statut' => $service->getStatut(),
+            'category' => [
+                'id' => $service->getCategory()?->getId(),
+                'name' => $service->getCategory()?->getName(),
+            ],
         ]);
     }
 
-    #[Route('/{id}', name: 'app_service_show', methods: ['GET'])]
-    public function show(Service $service): Response
+    // Mettre à jour un service
+    #[Route('/{id}', name: 'api_services_update', methods: ['PUT'])]
+    public function update(Request $request, Service $service, EntityManagerInterface $em): JsonResponse
     {
-        return $this->render('service/show.html.twig', [
-            'service' => $service,
-        ]);
-    }
+        $data = json_decode($request->getContent(), true);
 
-    #[Route('/{id}/edit', name: 'app_service_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Service $service, EntityManagerInterface $entityManager): Response
-    {
-        $form = $this->createForm(ServiceForm::class, $service);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_service_index', [], Response::HTTP_SEE_OTHER);
+        if (!$data) {
+            return $this->json(['error' => 'JSON invalide'], 400);
         }
 
-        return $this->render('service/edit.html.twig', [
-            'service' => $service,
-            'form' => $form,
-        ]);
-    }
+        $service->setTitre($data['titre'] ?? $service->getTitre());
+        $service->setDescription($data['description'] ?? $service->getDescription());
+        $service->setStatut($data['statut'] ?? $service->getStatut());
 
-    #[Route('/{id}', name: 'app_service_delete', methods: ['POST'])]
-    public function delete(Request $request, Service $service, EntityManagerInterface $entityManager): Response
-    {
-        if ($this->isCsrfTokenValid('delete'.$service->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($service);
-            $entityManager->flush();
+        if (isset($data['category'])) {
+            $category = $em->getRepository(Categorie::class)->find($data['category']);
+            if (!$category) {
+                return $this->json(['error' => 'Catégorie invalide'], 404);
+            }
+            $service->setCategory($category);
         }
 
-        return $this->redirectToRoute('app_service_index', [], Response::HTTP_SEE_OTHER);
+        $em->flush();
+
+        return $this->json(['message' => 'Service modifié avec succès']);
+    }
+
+    // Supprimer un service
+    #[Route('/{id}', name: 'api_services_delete', methods: ['DELETE'])]
+    public function delete(Service $service, EntityManagerInterface $em): JsonResponse
+    {
+        $em->remove($service);
+        $em->flush();
+
+        return $this->json(['message' => 'Service supprimé avec succès']);
     }
 }

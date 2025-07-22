@@ -24,10 +24,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 180, unique: true)]
     private ?string $email = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)] // Déjà corrigé pour 'localisation'
     private ?string $localisation = null;
 
-    #[ORM\Column(type: Types::TEXT)]
+    #[ORM\Column(type: Types::TEXT, nullable: true)] // <-- Correction ici : ajoutez nullable: true
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
@@ -40,18 +40,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var Collection<int, Service>
      */
     #[ORM\ManyToMany(targetEntity: Service::class, inversedBy: 'users')]
-    private Collection $services; // Renommé 'relation' en 'services'
+    private Collection $services;
 
     /**
      * @var Collection<int, Message>
      */
-    #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'user', orphanRemoval: true)] // Mappé par 'user' dans Message
+    #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $messages;
 
     /**
      * @var Collection<int, Evaluation>
      */
-    #[ORM\OneToMany(targetEntity: Evaluation::class, mappedBy: 'user', orphanRemoval: true)] // Mappé par 'user' dans Evaluation
+    #[ORM\OneToMany(targetEntity: Evaluation::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $evaluations;
 
     public function __construct()
@@ -95,7 +95,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->localisation;
     }
 
-    public function setLocalisation(string $localisation): static
+    public function setLocalisation(?string $localisation): static
     {
         $this->localisation = $localisation;
 
@@ -107,7 +107,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->description;
     }
 
-    public function setDescription(string $description): static
+    public function setDescription(?string $description): static // <-- Le type hint peut aussi être nullable ici
     {
         $this->description = $description;
 
@@ -209,7 +209,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         if (!$this->messages->contains($message)) {
             $this->messages->add($message);
-            $message->setUser($this); // Appel correct de setUser() sur Message
+            $message->setUser($this);
         }
 
         return $this;
@@ -219,8 +219,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         if ($this->messages->removeElement($message)) {
             // set the owning side to null (unless already changed)
-            if ($message->getUser() === $this) { // Appel correct de getUser() sur Message
-                $message->setUser(null); // Appel correct de setUser() sur Message
+            if ($message->getUser() === $this) {
+                $message->setUser(null);
             }
         }
 
@@ -239,7 +239,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         if (!$this->evaluations->contains($evaluation)) {
             $this->evaluations->add($evaluation);
-            $evaluation->setUser($this); // Appel correct de setUser() sur Evaluation
+            $evaluation->setUser($this);
         }
 
         return $this;
@@ -249,8 +249,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         if ($this->evaluations->removeElement($evaluation)) {
             // set the owning side to null (unless already changed)
-            if ($evaluation->getUser() === $this) { // Appel correct de getUser() sur Evaluation
-                $evaluation->setUser(null); // Appel correct de setUser() sur Evaluation
+            if ($evaluation->getUser() === $this) {
+                $evaluation->setUser(null);
             }
         }
 

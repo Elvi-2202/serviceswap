@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import HomePage from './pages/Home';
@@ -12,6 +11,9 @@ import Welcome from './pages/welcome';
 import Services from './pages/Services';
 import Troc from './pages/Troc';
 import Notifications from './pages/Notifications';
+import AddService from './pages/AddService';
+import EditService from './pages/EditService';
+import Categorie from './pages/Categorie';
 
 const theme = createTheme();
 
@@ -34,7 +36,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/services" element={<Services />} />
           <Route path="/troc" element={<Troc />} />
+          <Route path="/categorie" element={<Categorie />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/add-service" element={<AddService />} />
+          <Route path="/edit-service/:id" element={<EditService />} />
         </Routes>
       </Router>
     </ThemeProvider>

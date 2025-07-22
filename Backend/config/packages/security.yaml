@@ -48,7 +48,9 @@ security:
     access_control:
         # 1. Autoriser l'accès à l'endpoint de connexion (login_check) sans authentification JWT.
         # Utilisez le "$" pour assurer une correspondance exacte du chemin.
-        - { path: ^/api/login_check$, methods: [POST], roles: PUBLIC_ACCESS }
+        - { path: ^/api/login_check$, methods: [OPTIONS, POST], roles: PUBLIC_ACCESS }
+        - { path: ^/api/signup, roles: PUBLIC_ACCESS }
+        - { path: ^/api/categorie$, methods: [GET], roles: PUBLIC_ACCESS }
 
         # 2. Autoriser la création d'utilisateur (POST) sans authentification JWT.
         # Utilisez le "$" pour assurer une correspondance exacte du chemin.

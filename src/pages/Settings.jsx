@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { 
+import {
   Container,
   Typography,
   Box,
@@ -11,37 +11,43 @@ import {
   Button,
   Collapse,
   IconButton,
-  Paper
+  Paper,
+  useMediaQuery,
 } from '@mui/material';
 import {
   ExpandMore,
   ExpandLess,
   Notifications,
   Settings as SettingsIcon,
-  VolumeUp
+  VolumeUp,
 } from '@mui/icons-material';
-import "../App.css";
 
 const Settings = () => {
   const [openPrivacy, setOpenPrivacy] = useState(true);
   const [openDeactivation, setOpenDeactivation] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const isSmall = useMediaQuery('(max-width:600px)');
 
   return (
-    <Container maxWidth="sm" className="settings-container">
+    <Container maxWidth="sm" sx={{ py: 4 }}>
       {/* Titre principal */}
-      <Typography variant="h4" className="main-title">
-        <SettingsIcon className="title-icon" />
-        Paramètres de l'application
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+        <SettingsIcon fontSize="large" color="primary" />
+        <Typography variant={isSmall ? 'h5' : 'h4'} fontWeight={600}>
+          Paramètres de l'application
+        </Typography>
+      </Box>
 
       {/* Section Son */}
-      <Paper className="settings-block">
-        <ListItem>
-          <VolumeUp className="section-icon" />
+      <Paper
+        elevation={3}
+        sx={{ mb: 3, borderRadius: 2, p: { xs: 1, sm: 2 } }}
+      >
+        <ListItem sx={{ px: 0 }}>
+          <VolumeUp sx={{ color: 'primary.main', mr: 2 }} />
           <ListItemText primary="Son de l'application" />
-          <Switch 
+          <Switch
             checked={soundEnabled}
             onChange={() => setSoundEnabled(!soundEnabled)}
             color="primary"
@@ -50,44 +56,35 @@ const Settings = () => {
       </Paper>
 
       {/* Section Notifications */}
-      <Paper className="settings-block">
-        <ListItem 
-          button 
+      <Paper
+        elevation={3}
+        sx={{ mb: 3, borderRadius: 2, p: { xs: 1, sm: 2 } }}
+      >
+        <ListItem
+          button
           onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-          className="notification-item"
         >
-          <Notifications className="section-icon" />
-          <ListItemText 
-            primary="Notifications (messages, confirmations, rappels)" 
-            className="section-title"
+          <Notifications sx={{ color: 'primary.main', mr: 2 }} />
+          <ListItemText
+            primary="Notifications (messages, confirmations, rappels)"
           />
-          <Switch 
+          <Switch
             checked={notificationsEnabled}
-            onChange={(e) => {
-              e.stopPropagation();
-              setNotificationsEnabled(!notificationsEnabled);
-            }}
+            onClick={(e) => e.stopPropagation()}
+            onChange={() => setNotificationsEnabled(!notificationsEnabled)}
             color="primary"
           />
         </ListItem>
       </Paper>
 
       {/* Section Confidentialité */}
-      <Paper className="settings-block collapsible">
-        <ListItem 
-          button 
-          onClick={() => setOpenPrivacy(!openPrivacy)}
-          className="collapsible-header"
-        >
-          <ListItemText 
-            primary="Paramètres de confidentialité" 
-            className="section-title"
-          />
+      <Paper elevation={3} sx={{ mb: 3, borderRadius: 2 }}>
+        <ListItem button onClick={() => setOpenPrivacy(!openPrivacy)}>
+          <ListItemText primary="Paramètres de confidentialité" />
           {openPrivacy ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
-        
         <Collapse in={openPrivacy}>
-          <List dense className="nested-list">
+          <List dense>
             {[
               "Stocker et/ou accéder à des informations sur un appareil",
               "Développer et améliorer les services",
@@ -95,7 +92,7 @@ const Settings = () => {
               "Utiliser des données de géolocalisation précises",
               "Activité pour les rapports des annonces"
             ].map((text) => (
-              <ListItem key={text} className="nested-item">
+              <ListItem key={text} sx={{ pl: 3 }}>
                 <ListItemText primary={text} />
                 <Switch edge="end" color="primary" />
               </ListItem>
@@ -105,32 +102,24 @@ const Settings = () => {
       </Paper>
 
       {/* Section Désactivation */}
-      <Paper className="settings-block collapsible">
-        <ListItem 
-          button 
-          onClick={() => setOpenDeactivation(!openDeactivation)}
-          className="collapsible-header"
-        >
-          <ListItemText 
-            primary="Désactivation et suppression" 
-            className="section-title"
-          />
+      <Paper elevation={3} sx={{ mb: 4, borderRadius: 2 }}>
+        <ListItem button onClick={() => setOpenDeactivation(!openDeactivation)}>
+          <ListItemText primary="Désactivation et suppression" />
           {openDeactivation ? <ExpandLess /> : <ExpandMore />}
         </ListItem>
-        
         <Collapse in={openDeactivation}>
-          <Box className="nested-container">
-            <Typography variant="subtitle2" className="subsection-title">
+          <Box sx={{ px: 3, py: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
               Désactiver le compte
             </Typography>
-            <List dense className="nested-list">
+            <List dense>
               {[
                 "Masquer vos services et votre profil",
                 "Supprimer vos données et votre compte"
               ].map((text) => (
-                <ListItem key={text} className="nested-item">
+                <ListItem key={text}>
                   <ListItemText primary={text} />
-                  <IconButton edge="end" className="expand-icon">
+                  <IconButton edge="end">
                     <ExpandMore />
                   </IconButton>
                 </ListItem>
@@ -141,10 +130,17 @@ const Settings = () => {
       </Paper>
 
       {/* Bouton Déconnexion */}
-      <Button 
+      <Button
         fullWidth
         variant="contained"
-        className="logout-button"
+        sx={{
+          bgcolor: "#CF6B4D",
+          '&:hover': {
+            bgcolor: "#b75a3d"
+          },
+          fontWeight: 600,
+          textTransform: "none",
+        }}
       >
         Se déconnecter
       </Button>

@@ -1,12 +1,23 @@
-import React, { useState } from "react";
-import { Container, Typography, Box, Rating, Grid, Checkbox, TextField, Button, Paper } from "@mui/material";
-import "../App.css";
+import React, { useState } from 'react';
+import {
+  Container,
+  Typography,
+  Box,
+  Rating,
+  Grid,
+  Checkbox,
+  TextField,
+  Button,
+  Paper,
+  useMediaQuery
+} from '@mui/material';
 
 const criteria = ["Efficiency", "Quality", "Professionalism", "Collaborative", "Satisfaction"];
 
 const Feedback = () => {
+  const isSmall = useMediaQuery('(max-width:600px)');
   const [rating, setRating] = useState(0);
-  const [comments, setComments] = useState("");
+  const [comments, setComments] = useState('');
   const [selectedValues, setSelectedValues] = useState({});
 
   const handleCheckboxChange = (criterion, value) => {
@@ -19,48 +30,102 @@ const Feedback = () => {
   };
 
   return (
-    <Container maxWidth="xs" className="feedback-container">
-      <Typography variant="h5" className="feedback-title" gutterBottom>Feedback</Typography>
-      <Paper elevation={3} className="feedback-paper">
+    <Container maxWidth="sm" sx={{ py: { xs: 3, sm: 6 } }}>
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        align="center"
+        sx={{ mb: 3 }}
+      >
+        Feedback
+      </Typography>
+
+      <Paper
+        elevation={3}
+        sx={{
+          p: { xs: 2, sm: 4 },
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+        }}
+      >
         <Typography variant="h6">Rate your experience</Typography>
-        <Rating value={rating} onChange={(event, newValue) => setRating(newValue)} size="large" />
-        <Box mt={2}>
-          <Grid container spacing={1} alignItems="center">
-            <Grid item xs={6}><Typography variant="body2">Evaluation Criteria</Typography></Grid>
-            <Grid item xs={2}><Typography variant="body2">Mediocre</Typography></Grid>
-            <Grid item xs={2}><Typography variant="body2">Acceptable</Typography></Grid>
-            <Grid item xs={2}><Typography variant="body2">Good</Typography></Grid>
+
+        <Box>
+          <Rating value={rating} size="large" onChange={(_, val) => setRating(val)} />
+        </Box>
+
+        {/* Entêtes évaluation */}
+        <Box>
+          <Grid container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <Grid item xs={6}>
+              <Typography variant="body2" fontWeight={500}>
+                Evaluation Criteria
+              </Typography>
+            </Grid>
+            <Grid item xs={2}>
+              <Typography variant="body2" align="center">Mediocre</Typography>
+            </Grid>
+            <Grid item xs={2}>
+              <Typography variant="body2" align="center">Acceptable</Typography>
+            </Grid>
+            <Grid item xs={2}>
+              <Typography variant="body2" align="center">Good</Typography>
+            </Grid>
           </Grid>
+
           {criteria.map((criterion) => (
             <Grid container spacing={1} alignItems="center" key={criterion}>
-              <Grid item xs={6}><Typography variant="body2">{criterion}</Typography></Grid>
-              {["Mediocre", "Acceptable", "Good"].map((value) => (
-                <Grid item xs={2} key={value}>
+              <Grid item xs={6}>
+                <Typography variant="body2">{criterion}</Typography>
+              </Grid>
+
+              {['Mediocre', 'Acceptable', 'Good'].map((value) => (
+                <Grid item xs={2} key={value} sx={{ textAlign: 'center' }}>
                   <Checkbox
                     checked={selectedValues[criterion] === value}
                     onChange={() => handleCheckboxChange(criterion, value)}
+                    size={isSmall ? 'small' : 'medium'}
                   />
                 </Grid>
               ))}
             </Grid>
           ))}
         </Box>
-        <Typography variant="body2" mt={2}>Comments</Typography>
-        <TextField
-          fullWidth
-          multiline
-          rows={3}
-          variant="outlined"
-          value={comments}
-          onChange={(e) => setComments(e.target.value)}
-          className="feedback-textfield"
-        />
+
+        {/* Zone commentaire */}
+        <Box>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Comments
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            minRows={3}
+            variant="outlined"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+          />
+        </Box>
+
+        {/* Bouton Submit */}
         <Button
-          variant="contained"
-          className="feedback-submit"
           fullWidth
+          variant="contained"
+          size="large"
+          sx={{
+            backgroundColor: '#CF6B4D',
+            textTransform: "none",
+            fontWeight: 600,
+            '&:hover': {
+              backgroundColor: '#b34a34'
+            }
+          }}
           onClick={handleSubmit}
-        >SUBMIT</Button>
+        >
+          SUBMIT
+        </Button>
       </Paper>
     </Container>
   );

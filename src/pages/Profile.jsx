@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import {
   Box,
   Typography,
   List,
@@ -9,7 +9,8 @@ import {
   Divider,
   Button,
   Paper,
-  Avatar
+  Avatar,
+  useMediaQuery,
 } from '@mui/material';
 import {
   AccountCircle,
@@ -20,115 +21,190 @@ import {
   Description,
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
-  EventNote
+  EventNote,
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
-import "../App.css";
+
+// Style commun pour les sections
+const sectionStyle = {
+  borderRadius: 2,
+  p: { xs: 1.5, sm: 2 },
+  mb: { xs: 2, sm: 3 },
+  width: { xs: '100%', sm: '85%', md: '70%' },
+  mx: 'auto',
+};
 
 const ProfilePage = () => {
+  const isMobile = useMediaQuery('(max-width:600px)');
+
   return (
-    <Box className="profile-container">
-      {/* Header Section */}
-      <Paper className="profile-header" elevation={3}>
-        <Avatar 
-          className="profile-avatar"
-          sx={{ 
-            bgcolor: 'secondary.main',
-            fontSize: '2.5rem'
+    <Box sx={{ backgroundColor: '#F9FAFB', minHeight: '100vh', p: { xs: 1, sm: 2 } }}>
+      {/* ✅ Header */}
+      <Paper
+        elevation={3}
+        sx={{
+          ...sectionStyle,
+          textAlign: 'center',
+          py: { xs: 3, sm: 4 },
+        }}
+      >
+        <Avatar
+          sx={{
+            width: { xs: 60, sm: 80 },
+            height: { xs: 60, sm: 80 },
+            margin: '0 auto',
+            bgcolor: '#CF6B4D',
+            fontSize: { xs: '1.7rem', sm: '2rem' },
           }}
         >
           E
         </Avatar>
-        <Typography variant="h4" className="profile-name">Elvira_K</Typography>
-        <Typography variant="subtitle1">Membre depuis juin 2023</Typography>
-        
-        <Box className="profile-stats">
-          <Button 
-            className="stat-button"
-            variant="outlined" 
+        <Typography variant="h5" sx={{ mt: 1, fontWeight: 'bold', color: '#333' }}>
+          Elvira_K
+        </Typography>
+        <Typography variant="subtitle2" color="text.secondary">
+          Membre depuis juin 2023
+        </Typography>
+
+        {/* ✅ Boutons : Mes Services / Mes Troc */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            mt: 3,
+            gap: 2,
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+          }}
+        >
+          <Button
+            variant="outlined"
             startIcon={<EventNote />}
             component={Link}
             to="/services"
+            sx={{ textTransform: 'none' }}
+            fullWidth={isMobile}
           >
             Mes Services
           </Button>
-          <Button 
-            className="stat-button"
-            variant="outlined" 
+          <Button
+            variant="outlined"
             startIcon={<EventNote />}
             component={Link}
             to="/troc"
+            sx={{ textTransform: 'none' }}
+            fullWidth={isMobile}
           >
             Mes Troc
           </Button>
         </Box>
       </Paper>
 
-      {/* News Section */}
-      <Paper className="section-card" elevation={2}>
-        <Typography variant="h6" className="section-title">Actualités</Typography>
-        <Typography className="news-text">
+      {/* ✅ Actualités */}
+      <Paper elevation={2} sx={sectionStyle}>
+        <Typography variant="h6" gutterBottom>
+          Actualités
+        </Typography>
+        <Typography color="text.secondary">
           Comment est financé le projet trok ?
         </Typography>
       </Paper>
 
-      {/* Menu Section */}
-      <Paper className="section-card" elevation={2}>
-        <Typography variant="h6" className="section-title">Menu</Typography>
+      {/* ✅ Menu principal */}
+      <Paper elevation={2} sx={sectionStyle}>
+        <Typography variant="h6" gutterBottom>
+          Menu
+        </Typography>
         <List>
-          <ListItem button component={Link} to="/edit-profile" className="menu-item">
-            <ListItemIcon className="menu-icon"><AccountCircle /></ListItemIcon>
+          <ListItem button component={Link} to="/edit-profile">
+            <ListItemIcon>
+              <AccountCircle />
+            </ListItemIcon>
             <ListItemText primary="Mon compte" />
           </ListItem>
           <Divider />
-          <ListItem button component={Link} to="/avis" className="menu-item">
-            <ListItemIcon className="menu-icon"><RateReview /></ListItemIcon>
+          <ListItem button component={Link} to="/avis">
+            <ListItemIcon>
+              <RateReview />
+            </ListItemIcon>
             <ListItemText primary="Mes avis" />
           </ListItem>
           <Divider />
-          <ListItem button component={Link} to="/favoris" className="menu-item">
-            <ListItemIcon className="menu-icon"><Favorite /></ListItemIcon>
+          <ListItem button component={Link} to="/favoris">
+            <ListItemIcon>
+              <Favorite />
+            </ListItemIcon>
             <ListItemText primary="Mes annonces favorites" />
           </ListItem>
           <Divider />
-          <ListItem button component={Link} to="/inviter" className="menu-item">
-            <ListItemIcon className="menu-icon"><Group /></ListItemIcon>
+          <ListItem button component={Link} to="/inviter">
+            <ListItemIcon>
+              <Group />
+            </ListItemIcon>
             <ListItemText primary="Invitez des amis" />
           </ListItem>
         </List>
       </Paper>
 
-      {/* Help Section */}
-      <Paper className="section-card" elevation={2}>
-        <Typography variant="h6" className="section-title">Aide</Typography>
+      {/* ✅ Aide */}
+      <Paper elevation={2} sx={sectionStyle}>
+        <Typography variant="h6" gutterBottom>
+          Aide
+        </Typography>
         <List>
-          <ListItem button className="menu-item">
-            <ListItemIcon className="menu-icon"><Help /></ListItemIcon>
+          <ListItem button>
+            <ListItemIcon>
+              <Help />
+            </ListItemIcon>
             <ListItemText primary="Assistance" />
           </ListItem>
           <Divider />
-          <ListItem button className="menu-item">
-            <ListItemIcon className="menu-icon"><Description /></ListItemIcon>
+          <ListItem button>
+            <ListItemIcon>
+              <Description />
+            </ListItemIcon>
             <ListItemText primary="Conditions générales" />
           </ListItem>
           <Divider />
-          <ListItem button component={Link} to="/settings" className="menu-item">
-            <ListItemIcon className="menu-icon"><SettingsIcon /></ListItemIcon>
+          <ListItem button component={Link} to="/settings">
+            <ListItemIcon>
+              <SettingsIcon />
+            </ListItemIcon>
             <ListItemText primary="Paramètre de l'application" />
           </ListItem>
         </List>
       </Paper>
 
-      {/* Notifications Section */}
-      <Paper className="section-card" elevation={2}>
-        <Typography variant="h6" className="section-title">Notifications</Typography>
+      {/* ✅ Notifications */}
+      <Paper elevation={2} sx={sectionStyle}>
+        <Typography variant="h6" gutterBottom>
+          Notifications
+        </Typography>
         <List>
-          <ListItem button component={Link} to="/notifications" className="menu-item">
-            <ListItemIcon className="menu-icon"><NotificationsIcon /></ListItemIcon>
+          <ListItem button component={Link} to="/notifications">
+            <ListItemIcon>
+              <NotificationsIcon />
+            </ListItemIcon>
             <ListItemText primary="Voir mes notifications" />
           </ListItem>
         </List>
       </Paper>
+
+      {/* ✅ Illustration cactus */}
+      <Box sx={{ textAlign: 'center', mt: 4 }}>
+        <img
+          src="https://cdn-icons-png.flaticon.com/512/619/619034.png"
+          alt="Cactus"
+          style={{
+            width: isMobile ? 75 : 100,
+            height: isMobile ? 75 : 100,
+            opacity: 0.6,
+          }}
+        />
+        <Typography sx={{ mt: 2, color: '#7c6e65', fontSize: { xs: 14, sm: 16 } }}>
+          Cette troceuse n'a pas encore d'annonces.
+        </Typography>
+      </Box>
     </Box>
   );
 };

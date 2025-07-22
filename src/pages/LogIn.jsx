@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -12,9 +12,13 @@ import {
   TextField,
   Button,
   useMediaQuery,
-  Alert, // Import Alert component
+  Alert,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion"; // eslint-disable-line no-unused-vars
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import "../App.css";
 
 const ACCENT = "#CF6B4D";
@@ -33,77 +37,102 @@ const Login = () => {
   const isSmall = useMediaQuery("(max-width:600px)");
   const [tab, setTab] = useState(0);
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [signupData, setSignupData] = useState({ name: "", email: "", password: "" });
-  const [message, setMessage] = useState({ type: "", text: "" }); // State for messages
-
+  const [signupData, setSignupData] = useState({
+    pseudo: "",
+    email: "",
+    password: "",
+    localisation: "",
+    description: "",
+  });
+  const [message, setMessage] = useState({ type: "", text: "" });
+  const [isLoading, setIsLoading] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleTab = (_, newVal) => {
     setTab(newVal);
-    setMessage({ type: "", text: "" }); // Clear messages when changing tabs
+    setMessage({ type: "", text: "" });
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setMessage({ type: "", text: "" }); // Clear previous messages
+    setMessage({ type: "", text: "" });
+    setIsLoading(true);
+
     try {
       const response = await fetch("http://localhost:8000/api/login_check", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        mode: "cors",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({
           email: loginData.email,
           password: loginData.password,
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setMessage({ type: "error", text: errorData.message || "Erreur de connexion" });
-        return;
-      }
-
       const data = await response.json();
-      console.log("Token reçu :", data);
+      if (!response.ok) throw new Error(data.message || "Échec de l'authentification");
 
       localStorage.setItem("token", data.token);
       setMessage({ type: "success", text: "Connexion réussie !" });
       navigate("/home");
     } catch (error) {
-      console.error("Erreur serveur :", error);
-      setMessage({ type: "error", text: "Erreur réseau ou serveur. Veuillez vérifier la console pour plus de détails." });
+      setMessage({
+        type: "error",
+        text: error.message || "Erreur lors de la connexion",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    setMessage({ type: "", text: "" }); // Clear previous messages
+    setMessage({ type: "", text: "" });
+    setIsLoading(true);
+
     try {
       const response = await fetch("http://localhost:8000/api/signup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(signupData),
+        mode: "cors",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          pseudo: signupData.pseudo,
+          email: signupData.email,
+          password: signupData.password,
+          localisation: signupData.localisation,
+          description: signupData.description,
+        }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        setMessage({ type: "error", text: errorData.message || "Erreur lors de l'inscription" });
-        return;
-      }
-
       const data = await response.json();
-      localStorage.setItem("token", data.token); // Assuming signup also returns a token
-      setMessage({ type: "success", text: "Inscription réussie ! Vous pouvez maintenant vous connecter." });
+      if (!response.ok) throw new Error(data.message || "Échec de l'inscription");
+
+      localStorage.setItem("token", data.token);
+      setMessage({ type: "success", text: "Inscription réussie !" });
       navigate("/home");
     } catch (error) {
-      console.error("Erreur serveur :", error);
-      setMessage({ type: "error", text: "Erreur réseau ou serveur. Veuillez vérifier la console pour plus de détails." });
+      setMessage({
+        type: "error",
+        text: error.message || "Erreur lors de l'inscription",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Box sx={{ bgcolor: BG, minHeight: "100vh" }}>
+    <Box sx={{ bgcolor: BG, minHeight: "100vh", px: 2 }}>
+      {/* ✅ Entête */}
       <AppBar position="static" color="transparent" elevation={0}>
-        <Toolbar sx={{ justifyContent: "center" }}>
+        <Toolbar sx={{ justifyContent: "center", py: { xs: 1, sm: 2 } }}>
           <Link to="/" style={{ textDecoration: "none" }}>
             <Typography
               variant={isSmall ? "h6" : "h5"}
@@ -115,8 +144,16 @@ const Login = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xs" sx={{ mt: 8 }}>
-        <Paper elevation={2} sx={{ p: 4, borderRadius: 2, bgcolor: FORM_BG }}>
+      {/* ✅ Formulaires */}
+      <Container maxWidth="xs" sx={{ mt: { xs: 6, sm: 8 }, mb: 6 }}>
+        <Paper
+          elevation={2}
+          sx={{
+            p: { xs: 3, sm: 4 },
+            borderRadius: 2,
+            bgcolor: FORM_BG,
+          }}
+        >
           <Tabs
             value={tab}
             onChange={handleTab}
@@ -124,7 +161,12 @@ const Login = () => {
             sx={{
               mb: 3,
               "& .MuiTabs-indicator": { bgcolor: ACCENT },
-              "& .MuiTab-root": { color: SECONDARY_BTN, textTransform: "none" },
+              "& .MuiTab-root": {
+                color: SECONDARY_BTN,
+                fontWeight: 500,
+                textTransform: "none",
+                fontSize: isSmall ? 14 : 16,
+              },
               "& .Mui-selected": { color: ACCENT },
             }}
           >
@@ -132,7 +174,6 @@ const Login = () => {
             <Tab label="Inscription" />
           </Tabs>
 
-          {/* Display messages using Alert component */}
           {message.text && (
             <Alert severity={message.type} sx={{ mb: 2, borderRadius: 1 }}>
               {message.text}
@@ -161,7 +202,7 @@ const Login = () => {
                 />
                 <TextField
                   label="Mot de passe"
-                  type="password"
+                  type={showLoginPassword ? "text" : "password"}
                   variant="outlined"
                   fullWidth
                   margin="normal"
@@ -169,22 +210,39 @@ const Login = () => {
                   onChange={(e) =>
                     setLoginData({ ...loginData, password: e.target.value })
                   }
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() =>
+                            setShowLoginPassword(!showLoginPassword)
+                          }
+                          edge="end"
+                        >
+                          {showLoginPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <Button
                   variant="contained"
                   fullWidth
+                  disabled={isLoading}
                   sx={{
                     mt: 2,
-                    py: 1.5,
+                    py: 1.3,
                     bgcolor: PRIMARY_BTN,
                     textTransform: "none",
+                    fontSize: isSmall ? 14 : 16,
                   }}
                   onClick={handleLogin}
                 >
-                  Se connecter
+                  {isLoading ? "Connexion..." : "Se connecter"}
                 </Button>
               </motion.div>
             )}
+
             {tab === 1 && (
               <motion.div
                 key="signup"
@@ -195,13 +253,13 @@ const Login = () => {
                 transition={{ duration: 0.3 }}
               >
                 <TextField
-                  label="Nom"
+                  label="Pseudo"
                   variant="outlined"
                   fullWidth
                   margin="normal"
-                  value={signupData.name}
+                  value={signupData.pseudo}
                   onChange={(e) =>
-                    setSignupData({ ...signupData, name: e.target.value })
+                    setSignupData({ ...signupData, pseudo: e.target.value })
                   }
                 />
                 <TextField
@@ -216,7 +274,7 @@ const Login = () => {
                 />
                 <TextField
                   label="Mot de passe"
-                  type="password"
+                  type={showSignupPassword ? "text" : "password"}
                   variant="outlined"
                   fullWidth
                   margin="normal"
@@ -224,19 +282,55 @@ const Login = () => {
                   onChange={(e) =>
                     setSignupData({ ...signupData, password: e.target.value })
                   }
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowSignupPassword(!showSignupPassword)}
+                          edge="end"
+                        >
+                          {showSignupPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField
+                  label="Localisation"
+                  variant="outlined"
+                  fullWidth
+                  margin="normal"
+                  value={signupData.localisation}
+                  onChange={(e) =>
+                    setSignupData({ ...signupData, localisation: e.target.value })
+                  }
+                />
+                <TextField
+                  label="Description"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  margin="normal"
+                  value={signupData.description}
+                  onChange={(e) =>
+                    setSignupData({ ...signupData, description: e.target.value })
+                  }
                 />
                 <Button
                   variant="contained"
                   fullWidth
+                  disabled={isLoading}
                   sx={{
                     mt: 2,
-                    py: 1.5,
+                    py: 1.3,
                     bgcolor: SECONDARY_BTN,
                     textTransform: "none",
+                    fontSize: isSmall ? 14 : 16,
                   }}
                   onClick={handleSignup}
                 >
-                  S'inscrire
+                  {isLoading ? "Inscription..." : "S'inscrire"}
                 </Button>
               </motion.div>
             )}

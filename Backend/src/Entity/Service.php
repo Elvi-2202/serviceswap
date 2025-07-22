@@ -22,21 +22,17 @@ class Service
     #[ORM\Column(type: Types::TEXT)]
     private ?string $description = null;
 
-    // Supprimé car la catégorie est gérée par la relation ManyToOne ci-dessous
-    // #[ORM\Column(length: 255)]
-    // private ?string $catégorie = null;
-
     #[ORM\Column(length: 255)]
     private ?string $statut = null;
 
     /**
      * @var Collection<int, User>
      */
-    #[ORM\ManyToMany(targetEntity: User::class, mappedBy: 'services')] // Mappé par la propriété 'services' dans User
+    #[ORM\ManyToMany(targetEntity: User::class, mappedBy: 'services')]
     private Collection $users;
 
-    // Renommé 'relation' en 'category' pour plus de clarté
-    #[ORM\ManyToOne(inversedBy: 'services')] // 'services' est le nom de la collection dans l'entité Categorie
+    // C'est ici que la correction a été appliquée : ajout de targetEntity: Categorie::class
+    #[ORM\ManyToOne(targetEntity: Categorie::class, inversedBy: 'services')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Categorie $category = null;
 
@@ -74,18 +70,6 @@ class Service
         return $this;
     }
 
-    // Le getter/setter pour 'catégorie' est retiré si la relation ManyToOne est utilisée
-    // public function getCatégorie(): ?string
-    // {
-    //     return $this->catégorie;
-    // }
-
-    // public function setCatégorie(string $catégorie): static
-    // {
-    //     $this->catégorie = $catégorie;
-    //     return $this;
-    // }
-
     public function getStatut(): ?string
     {
         return $this->statut;
@@ -110,7 +94,7 @@ class Service
     {
         if (!$this->users->contains($user)) {
             $this->users->add($user);
-            $user->addService($this); // Correction : Appel à addService() sur l'objet User
+            $user->addService($this);
         }
 
         return $this;
@@ -119,13 +103,13 @@ class Service
     public function removeUser(User $user): static
     {
         if ($this->users->removeElement($user)) {
-            $user->removeService($this); // Correction : Appel à removeService() sur l'objet User
+            $user->removeService($this);
         }
 
         return $this;
     }
 
-    public function getCategory(): ?Categorie // Getters/Setters pour la relation Categorie
+    public function getCategory(): ?Categorie
     {
         return $this->category;
     }

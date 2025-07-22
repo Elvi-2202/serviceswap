@@ -17,7 +17,7 @@ class Categorie
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $name = null; // Nom de la catégorie, par exemple "Plomberie", "Électricité"
+    private ?string $name = null; // name de la catégorie, par exemple "Plomberie", "Électricité"
 
     /**
      * @var Collection<int, Service>

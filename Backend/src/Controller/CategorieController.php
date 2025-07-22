@@ -3,79 +3,87 @@
 namespace App\Controller;
 
 use App\Entity\Categorie;
-use App\Form\CategorieForm;
 use App\Repository\CategorieRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/categorie')]
+#[Route('/api/categorie')]
 final class CategorieController extends AbstractController
 {
-    #[Route(name: 'app_categorie_index', methods: ['GET'])]
-    public function index(CategorieRepository $categorieRepository): Response
+    #[Route('', name: 'api_categorie_index', methods: ['GET'])]
+    public function index(CategorieRepository $categorieRepository): JsonResponse
     {
-        return $this->render('categorie/index.html.twig', [
-            'categories' => $categorieRepository->findAll(),
-        ]);
+        $categories = $categorieRepository->findAll();
+
+        $data = [];
+        foreach ($categories as $categorie) {
+            $data[] = [
+                'id' => $categorie->getId(),
+                'name' => $categorie->getName(),
+            ];
+        }
+
+        return new JsonResponse($data);
     }
 
-    #[Route('/new', name: 'app_categorie_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    #[Route('/new', name: 'api_categorie_new', methods: ['POST'])]
+    public function new(Request $request, EntityManagerInterface $entityManager): JsonResponse
     {
+        $data = json_decode($request->getContent(), true);
+
+        if (!isset($data['name']) || empty(trim($data['name']))) {
+            return new JsonResponse(['error' => 'Le champ "name" est requis.'], Response::HTTP_BAD_REQUEST);
+        }
+
         $categorie = new Categorie();
-        $form = $this->createForm(CategorieForm::class, $categorie);
-        $form->handleRequest($request);
+        $categorie->setName($data['name']);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($categorie);
-            $entityManager->flush();
+        $entityManager->persist($categorie);
+        $entityManager->flush();
 
-            return $this->redirectToRoute('app_categorie_index', [], Response::HTTP_SEE_OTHER);
-        }
+        return new JsonResponse([
+            'message' => 'Catégorie créée avec succès.',
+            'id' => $categorie->getId(),
+            'name' => $categorie->getName()
+        ], Response::HTTP_CREATED);
+    }
 
-        return $this->render('categorie/new.html.twig', [
-            'categorie' => $categorie,
-            'form' => $form,
+    #[Route('/{id}', name: 'api_categorie_show', methods: ['GET'])]
+    public function show(Categorie $categorie): JsonResponse
+    {
+        return new JsonResponse([
+            'id' => $categorie->getId(),
+            'name' => $categorie->getName()
         ]);
     }
 
-    #[Route('/{id}', name: 'app_categorie_show', methods: ['GET'])]
-    public function show(Categorie $categorie): Response
+    #[Route('/{id}/edit', name: 'api_categorie_edit', methods: ['PUT', 'PATCH'])]
+    public function edit(Request $request, Categorie $categorie, EntityManagerInterface $entityManager): JsonResponse
     {
-        return $this->render('categorie/show.html.twig', [
-            'categorie' => $categorie,
-        ]);
-    }
+        $data = json_decode($request->getContent(), true);
 
-    #[Route('/{id}/edit', name: 'app_categorie_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Categorie $categorie, EntityManagerInterface $entityManager): Response
-    {
-        $form = $this->createForm(CategorieForm::class, $categorie);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_categorie_index', [], Response::HTTP_SEE_OTHER);
-        }
-
-        return $this->render('categorie/edit.html.twig', [
-            'categorie' => $categorie,
-            'form' => $form,
-        ]);
-    }
-
-    #[Route('/{id}', name: 'app_categorie_delete', methods: ['POST'])]
-    public function delete(Request $request, Categorie $categorie, EntityManagerInterface $entityManager): Response
-    {
-        if ($this->isCsrfTokenValid('delete'.$categorie->getId(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($categorie);
+        if (isset($data['name'])) {
+            $categorie->setName($data['name']);
             $entityManager->flush();
         }
 
-        return $this->redirectToRoute('app_categorie_index', [], Response::HTTP_SEE_OTHER);
+        return new JsonResponse([
+            'message' => 'Catégorie mise à jour.',
+            'id' => $categorie->getId(),
+            'name' => $categorie->getName()
+        ]);
+    }
+
+    #[Route('/{id}', name: 'api_categorie_delete', methods: ['DELETE'])]
+    public function delete(Categorie $categorie, EntityManagerInterface $entityManager): JsonResponse
+    {
+        $entityManager->remove($categorie);
+        $entityManager->flush();
+
+        return new JsonResponse(['message' => 'Catégorie supprimée.']);
     }
 }

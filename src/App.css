@@ -507,4 +507,110 @@
   min-height: 100vh;
 }
 
-/* ... (conservez les autres styles existants) ... */
+/* ... (conservez les autres styles existants) ... *//* ====== Pages Add / Edit / Services ====== */
+
+/* Conteneur principal */
+.add-service-container,
+.edit-service-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Header avec flèche de retour */
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header h4 {
+  color: #D76B36;
+  font-weight: 600;
+}
+
+/* Champs du formulaire */
+.form-section-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #D76B36;
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Zone de description */
+.description-textfield textarea {
+  border-radius: 12px;
+}
+
+/* Sélecteurs */
+.MuiFormControl-root {
+  border-radius: 12px;
+}
+
+.MuiSelect-outlined {
+  border-radius: 12px;
+}
+
+/* Upload photo */
+.photo-upload-button {
+  height: 100px;
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  background-color: #fafafa;
+  color: #888;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.photo-upload-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* Bouton de soumission */
+.publish-btn {
+  background-color: #D76B36;
+  color: white;
+  font-weight: bold;
+  border-radius: 25px;
+  padding: 12px 0;
+  text-transform: none;
+  font-size: 1.05rem;
+}
+
+/* Liste des services */
+.service-card {
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease;
+  background-color: white;
+}
+
+.service-card:hover {
+  transform: translateY(-3px);
+}
+
+/* Titre des services */
+.service-title {
+  font-weight: 600;
+  color: #D76B36;
+  font-size: 1.1rem;
+}
+
+/* Étiquettes de type de service */
+.service-tag {
+  background-color: #ffe3d5;
+  color: #D76B36;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* Date de service */
+.service-date {
+  color: #777;
+  font-size: 0.85rem;
+}
