@@ -26,17 +26,10 @@ const AddServicePage = () => {
 
   const API_BASE_URL = 'http://localhost:8000/api/services';
 
-  // --- Exemple Postman: POST http://localhost:8000/api/services ---
-  // {
-  //   "titre": "Ménage 2h",
-  //   "description": "Service de ménage complet",
-  //   "statut": "Offered service",
-  //   "category": 1
-  // }
 
   useEffect(() => {
     // Hardcode ou fetch categories
-    setCategories(['Ménage', 'Jardinage', 'Bricolage', 'Cours particuliers', 'Garde d\'enfants']);
+    setCategories(['Ménage', 'Jardinage', 'Bricolage', 'Cours particuliers', 'Garde d\'enfants', 'Plomberie']);
   }, []);
 
   const handleChange = (e) => {

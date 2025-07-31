@@ -19,22 +19,29 @@ import {
 } from '@mui/material';
 import { Add, Delete, Edit } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
-import '../App.css';
 
 const ServicesPage = () => {
   const isSmall = useMediaQuery('(max-width:600px)');
   const navigate = useNavigate();
+
+  const [myServices, setMyServices] = useState([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
-  const [myServices, setMyServices] = useState([]);
 
   const API_BASE_URL = 'http://localhost:8000/api/services';
 
   useEffect(() => {
+    // Chargement des services
     fetch(API_BASE_URL)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Erreur chargement services');
+        return res.json();
+      })
       .then((data) => setMyServices(data))
-      .catch((err) => console.error('Erreur chargement services:', err));
+      .catch((err) => {
+        console.error(err);
+        setMyServices([]); // en cas d'erreur
+      });
   }, []);
 
   const handleDeleteClick = (service) => {
@@ -43,17 +50,19 @@ const ServicesPage = () => {
   };
 
   const handleConfirmDelete = () => {
+    if (!serviceToDelete) return;
+
     fetch(`${API_BASE_URL}/${serviceToDelete.id}`, {
       method: 'DELETE',
     })
       .then((res) => {
-        if (res.ok) {
-          setMyServices((prev) => prev.filter((s) => s.id !== serviceToDelete.id));
-          setDeleteDialogOpen(false);
-          setServiceToDelete(null);
-        } else {
-          throw new Error('Erreur suppression service');
-        }
+        if (!res.ok) throw new Error('Erreur suppression service');
+        // Mise à jour locale
+        setMyServices((prev) =>
+          prev.filter((s) => s.id !== serviceToDelete.id)
+        );
+        setDeleteDialogOpen(false);
+        setServiceToDelete(null);
       })
       .catch((err) => {
         console.error(err);
@@ -62,8 +71,14 @@ const ServicesPage = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 }, minHeight: '100vh', bgcolor: '#F9FAFB' }}>
-      {/* Header */}
+    <Box
+      sx={{
+        p: { xs: 2, sm: 4 },
+        minHeight: '100vh',
+        bgcolor: '#F9FAFB',
+      }}
+    >
+      {/* En-tête */}
       <Box
         sx={{
           display: 'flex',
@@ -74,7 +89,7 @@ const ServicesPage = () => {
           mb: 3,
         }}
       >
-        <Typography variant={isSmall ? 'h5' : 'h4'} sx={{ fontWeight: 600 }}>
+        <Typography variant={isSmall ? 'h5' : 'h4'} fontWeight={600}>
           Mes Services
         </Typography>
         <Button
@@ -85,9 +100,7 @@ const ServicesPage = () => {
           fullWidth={isSmall}
           sx={{
             backgroundColor: '#CF6B4D',
-            '&:hover': {
-              backgroundColor: '#b75a3d',
-            },
+            '&:hover': { backgroundColor: '#b75a3d' },
             textTransform: 'none',
             fontWeight: 500,
           }}
@@ -97,7 +110,7 @@ const ServicesPage = () => {
       </Box>
 
       {/* Liste des services */}
-      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
         {myServices.length === 0 ? (
           <Typography textAlign="center" color="text.secondary">
             Aucun service disponible.
@@ -132,16 +145,12 @@ const ServicesPage = () => {
                     gap: 1,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                      {service.titre?.charAt(0)}
-                    </Avatar>
-                  </Box>
+                  <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                    {service.titre?.charAt(0) || '?'}
+                  </Avatar>
                   <ListItemText
                     primary={
-                      <Typography sx={{ fontWeight: 600 }}>
-                        {service.titre}
-                      </Typography>
+                      <Typography fontWeight={600}>{service.titre}</Typography>
                     }
                     secondary={
                       <Typography variant="body2" color="text.secondary">
@@ -157,7 +166,7 @@ const ServicesPage = () => {
         )}
       </Paper>
 
-      {/* Modal confirmation suppression */}
+      {/* Dialogue confirmation suppression */}
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -167,18 +176,18 @@ const ServicesPage = () => {
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Êtes-vous sûr de vouloir supprimer le service "{serviceToDelete?.titre}" ? Cette action est irréversible.
+            Êtes-vous sûr de vouloir supprimer le service "
+            {serviceToDelete?.titre}" ? Cette action est irréversible.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
           <Button
-            onClick={handleConfirmDelete}
             variant="contained"
-            sx={{
-              backgroundColor: '#CF6B4D',
-              '&:hover': { backgroundColor: '#b75a3d' },
-            }}
+            color="error"
+            onClick={handleConfirmDelete}
+            autoFocus
+            sx={{ bgcolor: '#CF6B4D', '&:hover': { bgcolor: '#b75a3d' } }}
           >
             Supprimer
           </Button>
