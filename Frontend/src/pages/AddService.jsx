@@ -1,131 +1,220 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
   Button,
-  Paper,
   TextField,
   MenuItem,
   Grid,
   FormControl,
   InputLabel,
   Select,
+  Paper
 } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
-import "../App.css";
+import { useNavigate } from 'react-router-dom';
 
 const AddServicePage = () => {
   const navigate = useNavigate();
-  const [serviceData, setServiceData] = useState({
-    titre: '',
+  const [formData, setFormData] = useState({
     description: '',
-    statut: '',
-    category: ''
+    category: 'Pictures',
+    serviceType: '', // 'offered' ou 'asked'
+    service: '', // le service sélectionné
+    date: new Date().toISOString().split('T')[0]
   });
-  const [categories, setCategories] = useState([]);
 
-  const API_BASE_URL = 'http://localhost:8000/api/services';
-
-
-  useEffect(() => {
-    // Hardcode ou fetch categories
-    setCategories(['Ménage', 'Jardinage', 'Bricolage', 'Cours particuliers', 'Garde d\'enfants', 'Plomberie']);
-  }, []);
+  const categories = ["Plomberie", "Menagère", "Garde d'enfants", "Bricolage", "Cours Particuliers", "Jardinage"];
+  const serviceOptions = ["Plomberie", "Ménage", "Garde d'enfants", "Bricolage", "Cours", "Jardinage"];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setServiceData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    fetch(API_BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serviceData),
-    })
-      .then(res => {
-        if (res.ok) {
-          navigate('/services');
-        } else {
-          throw new Error('Erreur création service');
-        }
-      })
-      .catch(err => console.error(err));
+    console.log('Form data submitted:', formData);
+    navigate('/');
   };
 
   return (
-    <Box sx={{ p: 2, maxWidth: 800, margin: '0 auto' }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>Ajouter un service</Typography>
+    <Box sx={{
+      maxWidth: '600px',
+      margin: '0 auto',
+      padding: '20px',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <Typography variant="h4" sx={{
+        marginBottom: '30px',
+        color: '#333',
+        fontWeight: 'bold',
+        textAlign: 'center'
+      }}>
+        Ajouter un service
+      </Typography>
 
-      <Paper sx={{ p: 3 }} component="form" onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
+      <Paper elevation={0} sx={{
+        padding: '25px',
+        borderRadius: '10px',
+        backgroundColor: '#f9f9f9'
+      }}>
+        {/* Description */}
+        <Typography variant="h6" sx={{
+          marginBottom: '10px',
+          color: '#333',
+          fontWeight: 'bold'
+        }}>
+          Description
+        </Typography>
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          placeholder="Type here your description..."
+          variant="outlined"
+          sx={{
+            marginBottom: '25px',
+            '& .MuiOutlinedInput-root': {
+              borderRadius: '8px',
+              backgroundColor: 'white'
+            }
+          }}
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+        />
+
+        {/* Category */}
+        <Typography variant="h6" sx={{
+          marginBottom: '10px',
+          color: '#333',
+          fontWeight: 'bold'
+        }}>
+          Category
+        </Typography>
+        <FormControl fullWidth sx={{ marginBottom: '25px' }}>
+          <InputLabel sx={{ color: '#666' }}>Select category</InputLabel>
+          <Select
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            sx={{
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              '& .MuiSelect-select': {
+                padding: '12px'
+              }
+            }}
+          >
+            {categories.map((category, index) => (
+              <MenuItem key={index} value={category}>{category}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Service Type Selection */}
+        <Grid container spacing={2} sx={{ marginBottom: '25px' }}>
           <Grid item xs={12}>
-            <TextField
-              label="Titre"
-              name="titre"
-              value={serviceData.titre}
-              onChange={handleChange}
-              fullWidth
-              required
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              label="Description"
-              name="description"
-              value={serviceData.description}
-              onChange={handleChange}
-              multiline
-              rows={4}
-              fullWidth
-              required
-            />
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Statut</InputLabel>
+            <Typography variant="h6" sx={{
+              marginBottom: '10px',
+              color: '#333',
+              fontWeight: 'bold'
+            }}>
+              Type de service
+            </Typography>
+            <FormControl fullWidth>
+              <InputLabel>Choisir un type</InputLabel>
               <Select
-                name="statut"
-                value={serviceData.statut}
+                name="serviceType"
+                value={formData.serviceType}
                 onChange={handleChange}
-                label="Statut"
+                sx={{
+                  borderRadius: '8px',
+                  backgroundColor: 'white'
+                }}
               >
-                <MenuItem value="Offered service">Offered service</MenuItem>
-                <MenuItem value="Wanted service">Wanted service</MenuItem>
+                <MenuItem value="offered">Service offert</MenuItem>
+                <MenuItem value="asked">Service demandé</MenuItem>
               </Select>
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth required>
-              <InputLabel>Catégorie</InputLabel>
-              <Select
-                name="category"
-                value={serviceData.category}
-                onChange={handleChange}
-                label="Catégorie"
-              >
-                {categories.map((cat, idx) => (
-                  <MenuItem key={idx} value={idx + 1}>{cat}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={12} sx={{ textAlign: 'right' }}>
-            <Button
-              variant="contained"
-              sx={{ backgroundColor: '#CF6B4D', '&:hover': { backgroundColor: '#b75a3d' } }}
-              type="submit"
-            >
-              Ajouter
-            </Button>
-          </Grid>
+          {/* Service Selection (apparaît seulement si un type est sélectionné) */}
+          {formData.serviceType && (
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{
+                marginBottom: '10px',
+                color: '#333',
+                fontWeight: 'bold'
+              }}>
+                {formData.serviceType === 'offered' ? 'Service offert' : 'Service demandé'}
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>Sélectionner un service</InputLabel>
+                <Select
+                  name="service"
+                  value={formData.service}
+                  onChange={handleChange}
+                  sx={{
+                    borderRadius: '8px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  {serviceOptions.map((option, index) => (
+                    <MenuItem key={index} value={option}>{option}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
         </Grid>
+
+        {/* Date */}
+        <Typography variant="h6" sx={{
+          marginBottom: '10px',
+          color: '#333',
+          fontWeight: 'bold'
+        }}>
+          Date
+        </Typography>
+        <TextField
+          fullWidth
+          type="date"
+          variant="outlined"
+          sx={{
+            marginBottom: '30px',
+            borderRadius: '8px',
+            backgroundColor: 'white'
+          }}
+          name="date"
+          value={formData.date}
+          onChange={handleChange}
+          InputLabelProps={{
+            shrink: true,
+          }}
+        />
+
+        {/* Bouton Publish */}
+        <Button
+          fullWidth
+          variant="contained"
+          sx={{
+            backgroundColor: '#CF6B4D',
+            color: 'white',
+            padding: '12px',
+            borderRadius: '8px',
+            fontWeight: 'bold',
+            fontSize: '16px',
+            textTransform: 'none',
+            '&:hover': {
+              backgroundColor: '#b85a3f'
+            }
+          }}
+          type="submit"
+          onClick={handleSubmit}
+        >
+          Publish
+        </Button>
       </Paper>
     </Box>
   );

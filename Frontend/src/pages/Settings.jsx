@@ -29,11 +29,15 @@ const Settings = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const isSmall = useMediaQuery('(max-width:600px)');
 
+  // Couleur orange personnalisée
+  const orangeColor = '#CF6B4D';
+  const orangeHover = '#b85a3f';
+
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
       {/* Titre principal */}
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
-        <SettingsIcon fontSize="large" color="primary" />
+        <SettingsIcon fontSize="large" sx={{ color: orangeColor }} />
         <Typography variant={isSmall ? 'h5' : 'h4'} fontWeight={600}>
           Paramètres de l'application
         </Typography>
@@ -45,12 +49,19 @@ const Settings = () => {
         sx={{ mb: 3, borderRadius: 2, p: { xs: 1, sm: 2 } }}
       >
         <ListItem sx={{ px: 0 }}>
-          <VolumeUp sx={{ color: 'primary.main', mr: 2 }} />
+          <VolumeUp sx={{ color: orangeColor, mr: 2 }} />
           <ListItemText primary="Son de l'application" />
           <Switch
             checked={soundEnabled}
             onChange={() => setSoundEnabled(!soundEnabled)}
-            color="primary"
+            sx={{
+              '& .MuiSwitch-switchBase.Mui-checked': {
+                color: orangeColor,
+              },
+              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                backgroundColor: orangeColor,
+              },
+            }}
           />
         </ListItem>
       </Paper>
@@ -64,7 +75,7 @@ const Settings = () => {
           button
           onClick={() => setNotificationsEnabled(!notificationsEnabled)}
         >
-          <Notifications sx={{ color: 'primary.main', mr: 2 }} />
+          <Notifications sx={{ color: orangeColor, mr: 2 }} />
           <ListItemText
             primary="Notifications (messages, confirmations, rappels)"
           />
@@ -72,16 +83,31 @@ const Settings = () => {
             checked={notificationsEnabled}
             onClick={(e) => e.stopPropagation()}
             onChange={() => setNotificationsEnabled(!notificationsEnabled)}
-            color="primary"
+            sx={{
+              '& .MuiSwitch-switchBase.Mui-checked': {
+                color: orangeColor,
+              },
+              '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                backgroundColor: orangeColor,
+              },
+            }}
           />
         </ListItem>
       </Paper>
 
       {/* Section Confidentialité */}
       <Paper elevation={3} sx={{ mb: 3, borderRadius: 2 }}>
-        <ListItem button onClick={() => setOpenPrivacy(!openPrivacy)}>
+        <ListItem 
+          button 
+          onClick={() => setOpenPrivacy(!openPrivacy)}
+          sx={{
+            '&:hover': {
+              backgroundColor: 'rgba(207, 107, 77, 0.08)'
+            }
+          }}
+        >
           <ListItemText primary="Paramètres de confidentialité" />
-          {openPrivacy ? <ExpandLess /> : <ExpandMore />}
+          {openPrivacy ? <ExpandLess sx={{ color: orangeColor }} /> : <ExpandMore sx={{ color: orangeColor }} />}
         </ListItem>
         <Collapse in={openPrivacy}>
           <List dense>
@@ -94,7 +120,17 @@ const Settings = () => {
             ].map((text) => (
               <ListItem key={text} sx={{ pl: 3 }}>
                 <ListItemText primary={text} />
-                <Switch edge="end" color="primary" />
+                <Switch 
+                  edge="end" 
+                  sx={{
+                    '& .MuiSwitch-switchBase.Mui-checked': {
+                      color: orangeColor,
+                    },
+                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                      backgroundColor: orangeColor,
+                    },
+                  }}
+                />
               </ListItem>
             ))}
           </List>
@@ -103,9 +139,17 @@ const Settings = () => {
 
       {/* Section Désactivation */}
       <Paper elevation={3} sx={{ mb: 4, borderRadius: 2 }}>
-        <ListItem button onClick={() => setOpenDeactivation(!openDeactivation)}>
+        <ListItem 
+          button 
+          onClick={() => setOpenDeactivation(!openDeactivation)}
+          sx={{
+            '&:hover': {
+              backgroundColor: 'rgba(207, 107, 77, 0.08)'
+            }
+          }}
+        >
           <ListItemText primary="Désactivation et suppression" />
-          {openDeactivation ? <ExpandLess /> : <ExpandMore />}
+          {openDeactivation ? <ExpandLess sx={{ color: orangeColor }} /> : <ExpandMore sx={{ color: orangeColor }} />}
         </ListItem>
         <Collapse in={openDeactivation}>
           <Box sx={{ px: 3, py: 2 }}>
@@ -120,7 +164,7 @@ const Settings = () => {
                 <ListItem key={text}>
                   <ListItemText primary={text} />
                   <IconButton edge="end">
-                    <ExpandMore />
+                    <ExpandMore sx={{ color: orangeColor }} />
                   </IconButton>
                 </ListItem>
               ))}
@@ -134,12 +178,14 @@ const Settings = () => {
         fullWidth
         variant="contained"
         sx={{
-          bgcolor: "#CF6B4D",
+          bgcolor: orangeColor,
           '&:hover': {
-            bgcolor: "#b75a3d"
+            bgcolor: orangeHover
           },
           fontWeight: 600,
           textTransform: "none",
+          py: 1.5,
+          fontSize: '1rem'
         }}
       >
         Se déconnecter
