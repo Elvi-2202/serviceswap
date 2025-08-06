@@ -1,0 +1,23 @@
+services:
+  frontend:
+    container_name: react_frontend_container
+    image: kuissu/react-deployment
+    ports:
+      - "3000:3000"
+  backend:
+    container_name: symfony_backend_container
+    image: kuissu/symfony-deployment
+    ports:
+      - "8089:80"
+  db:
+    image: mysql:8.0
+    container_name: symfony_db_container
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: app
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+volumes:
+  db_data:
