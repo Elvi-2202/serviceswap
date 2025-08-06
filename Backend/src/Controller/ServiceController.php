@@ -14,13 +14,12 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/services')]
 class ServiceController extends AbstractController
 {
-    // Lister tous les services
     #[Route('', name: 'api_services_index', methods: ['GET'])]
     public function index(ServiceRepository $serviceRepository): JsonResponse
     {
         $services = $serviceRepository->findAll();
-        $data = [];
 
+        $data = [];
         foreach ($services as $service) {
             $data[] = [
                 'id' => $service->getId(),
@@ -31,16 +30,25 @@ class ServiceController extends AbstractController
                     'id' => $service->getCategory()?->getId(),
                     'name' => $service->getCategory()?->getName(),
                 ],
+                'user' => [
+                    'id' => $service->getUser()?->getId(),
+                    'pseudo' => $service->getUser()?->getPseudo(),
+                ],
             ];
         }
 
         return $this->json($data);
     }
 
-    // Créer un nouveau service
     #[Route('', name: 'api_services_create', methods: ['POST'])]
     public function create(Request $request, EntityManagerInterface $em): JsonResponse
     {
+        // Récupérer l'utilisateur connecté
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['error' => 'Utilisateur non authentifié.'], 401);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['titre'], $data['description'], $data['statut'], $data['category'])) {
@@ -57,6 +65,7 @@ class ServiceController extends AbstractController
         $service->setDescription($data['description']);
         $service->setStatut($data['statut']);
         $service->setCategory($category);
+        $service->setUser($user); // Associer l'utilisateur connecté
 
         $em->persist($service);
         $em->flush();
@@ -67,7 +76,6 @@ class ServiceController extends AbstractController
         ], 201);
     }
 
-    // Afficher un service
     #[Route('/{id}', name: 'api_services_show', methods: ['GET'])]
     public function show(Service $service): JsonResponse
     {
@@ -80,10 +88,13 @@ class ServiceController extends AbstractController
                 'id' => $service->getCategory()?->getId(),
                 'name' => $service->getCategory()?->getName(),
             ],
+            'user' => [
+                'id' => $service->getUser()?->getId(),
+                'pseudo' => $service->getUser()?->getPseudo(),
+            ],
         ]);
     }
 
-    // Mettre à jour un service
     #[Route('/{id}', name: 'api_services_update', methods: ['PUT'])]
     public function update(Request $request, Service $service, EntityManagerInterface $em): JsonResponse
     {
@@ -110,7 +121,6 @@ class ServiceController extends AbstractController
         return $this->json(['message' => 'Service modifié avec succès']);
     }
 
-    // Supprimer un service
     #[Route('/{id}', name: 'api_services_delete', methods: ['DELETE'])]
     public function delete(Service $service, EntityManagerInterface $em): JsonResponse
     {

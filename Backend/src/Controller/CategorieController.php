@@ -8,11 +8,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/api/categorie')]
-final class CategorieController extends AbstractController
+class CategorieController extends AbstractController
 {
     #[Route('', name: 'api_categorie_index', methods: ['GET'])]
     public function index(CategorieRepository $categorieRepository): JsonResponse
@@ -36,7 +35,7 @@ final class CategorieController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (!isset($data['name']) || empty(trim($data['name']))) {
-            return new JsonResponse(['error' => 'Le champ "name" est requis.'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['error' => 'Le champ "name" est requis.'], 400);
         }
 
         $categorie = new Categorie();
@@ -49,7 +48,7 @@ final class CategorieController extends AbstractController
             'message' => 'Catégorie créée avec succès.',
             'id' => $categorie->getId(),
             'name' => $categorie->getName()
-        ], Response::HTTP_CREATED);
+        ], 201);
     }
 
     #[Route('/{id}', name: 'api_categorie_show', methods: ['GET'])]

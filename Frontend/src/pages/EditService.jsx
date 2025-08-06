@@ -16,9 +16,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  InputAdornment
 } from '@mui/material';
-import { ArrowBack, AddPhotoAlternate, DateRange } from '@mui/icons-material';
+import { ArrowBack } from '@mui/icons-material';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import "../App.css";
 
@@ -37,10 +36,18 @@ const EditServicePage = () => {
   // URL API backend Symfony
   const API_BASE_URL = 'http://localhost:8000/api/services';
 
-  // --- Exemple Postman: GET http://localhost:8000/api/services/{id} ---
+  // Récupération token JWT dans localStorage si tu utilises JWT
+  const token = localStorage.getItem('jwt_token');
+
+  // --- GET service by id ---
   useEffect(() => {
-    fetch(`${API_BASE_URL}/${id}`)
-      .then(res => res.json())
+    fetch(`${API_BASE_URL}/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Erreur chargement service');
+        return res.json();
+      })
       .then(data => {
         setServiceData({
           titre: data.titre || '',
@@ -50,12 +57,11 @@ const EditServicePage = () => {
         });
       })
       .catch(err => console.error('Erreur chargement service:', err));
-  }, [id]);
+  }, [id, token]);
 
-  // --- Si tu as un endpoint pour récupérer toutes les catégories, sinon hardcode ---
+  // --- Récupérer les catégories soit via API (ici hardcodé) ---
   useEffect(() => {
-    // Supposons que tu as un endpoint pour categories, sinon tu peux hardcoder
-    // Exemple hardcodé ici:
+    // Si tu as un API categories, utilise fetch ; sinon hardcode comme ici
     setCategories(['Ménage', 'Jardinage', 'Bricolage', 'Cours particuliers', 'Garde d\'enfants']);
   }, []);
 
@@ -64,11 +70,10 @@ const EditServicePage = () => {
     setServiceData(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- Exemple Postman: PUT http://localhost:8000/api/services/{id} ---
+  // --- PUT update service ---
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Préparer le payload JSON avec les champs modifiables
     const payload = {
       titre: serviceData.titre,
       description: serviceData.description,
@@ -78,7 +83,10 @@ const EditServicePage = () => {
 
     fetch(`${API_BASE_URL}/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
       body: JSON.stringify(payload)
     })
       .then(res => {
@@ -91,10 +99,11 @@ const EditServicePage = () => {
       .catch(err => console.error(err));
   };
 
-  // --- Exemple Postman: DELETE http://localhost:8000/api/services/{id} ---
+  // --- DELETE service ---
   const handleDelete = () => {
     fetch(`${API_BASE_URL}/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
       .then(res => {
         if (res.ok) {

@@ -3,8 +3,6 @@
 namespace App\Entity;
 
 use App\Repository\ServiceRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -25,21 +23,16 @@ class Service
     #[ORM\Column(length: 255)]
     private ?string $statut = null;
 
-    /**
-     * @var Collection<int, User>
-     */
-    #[ORM\ManyToMany(targetEntity: User::class, mappedBy: 'services')]
-    private Collection $users;
+    // Relation ManyToOne vers User (un service appartient à un seul utilisateur)
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $user = null;
 
-    // C'est ici que la correction a été appliquée : ajout de targetEntity: Categorie::class
     #[ORM\ManyToOne(targetEntity: Categorie::class, inversedBy: 'services')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Categorie $category = null;
 
-    public function __construct()
-    {
-        $this->users = new ArrayCollection();
-    }
+    // Getters et setters
 
     public function getId(): ?int
     {
@@ -82,29 +75,14 @@ class Service
         return $this;
     }
 
-    /**
-     * @return Collection<int, User>
-     */
-    public function getUsers(): Collection
+    public function getUser(): ?User
     {
-        return $this->users;
+        return $this->user;
     }
 
-    public function addUser(User $user): static
+    public function setUser(?User $user): static
     {
-        if (!$this->users->contains($user)) {
-            $this->users->add($user);
-            $user->addService($this);
-        }
-
-        return $this;
-    }
-
-    public function removeUser(User $user): static
-    {
-        if ($this->users->removeElement($user)) {
-            $user->removeService($this);
-        }
+        $this->user = $user;
 
         return $this;
     }

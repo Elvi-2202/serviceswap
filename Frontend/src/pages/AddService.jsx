@@ -17,7 +17,7 @@ const AddServicePage = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     description: '',
-    category: 'Pictures',
+    category: 'Plomberie', // Ajusté à une valeur valide par défaut
     serviceType: '', // 'offered' ou 'asked'
     service: '', // le service sélectionné
     date: new Date().toISOString().split('T')[0]
@@ -31,10 +31,55 @@ const AddServicePage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form data submitted:', formData);
-    navigate('/');
+
+    // Récupération du token JWT dans le localStorage
+    const token = localStorage.getItem('jwt_token');
+    if (!token) {
+      alert("Tu dois être connecté.e pour publier un service.");
+      return;
+    }
+
+    // Mapping des noms de catégories vers leurs IDs connus en base (à adapter si besoin)
+    const categoryMap = {
+      "Plomberie": 1,
+      "Menagère": 2,
+      "Garde d'enfants": 3,
+      "Bricolage": 4,
+      "Cours Particuliers": 5,
+      "Jardinage": 6
+    };
+
+    // Construction de la charge utile JSON conforme à ton backend Symfony
+    const payload = {
+      titre: formData.service,
+      description: `${formData.description}\nDate : ${formData.date}`,
+      statut: formData.serviceType === 'offered' ? "Offered service" : "Wanted service",
+      category: categoryMap[formData.category] || 1 // valeur par défaut 1 si non trouvée
+    };
+
+    try {
+      const response = await fetch('http://localhost:8000/api/services', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error || "Erreur lors de la création du service");
+        return;
+      }
+
+      // En cas de succès, tu peux rediriger ou afficher un message
+      navigate('/services');
+    } catch (error) {
+      alert("Erreur réseau : " + error.message);
+    }
   };
 
   return (
@@ -139,7 +184,7 @@ const AddServicePage = () => {
             </FormControl>
           </Grid>
 
-          {/* Service Selection (apparaît seulement si un type est sélectionné) */}
+          {/* Service Selection */}
           {formData.serviceType && (
             <Grid item xs={12}>
               <Typography variant="h6" sx={{

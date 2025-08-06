@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -36,6 +36,54 @@ const sectionStyle = {
 
 const ProfilePage = () => {
   const isMobile = useMediaQuery('(max-width:600px)');
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // URL de ton API utilisateur (adapte si besoin)
+  const API_USER_URL = 'http://localhost:8000/api/user/me'; // Exemple si tu as une route user connecté
+
+  // Récupération token JWT localStorage (adapter si autre stockage)
+  const token = localStorage.getItem('jwt_token');
+
+  useEffect(() => {
+    // Appel à l'API pour récupérer les données utilisateur
+    fetch(API_USER_URL, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: token ? `Bearer ${token}` : '',
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Erreur de récupération utilisateur');
+        return res.json();
+      })
+      .then((data) => {
+        setUserData({
+          pseudo: data.pseudo || 'Utilisateur',
+          description: data.description || '',
+          // Adaptation selon ton API: ici on mappe les champs aux noms affichés
+          localisation: data.localisation || '',
+          email: data.email || '',
+          // Ajoute ici autres champs si disponibles, par ex.
+          // dateNaissance, genre, langue, etc.
+          // Si non fournis par API, tu peux garder les valeurs par défaut
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [API_USER_URL, token]);
+
+  if (loading) {
+    return <Typography>Chargement du profil...</Typography>;
+  }
+
+  // Si les données ne sont pas encore chargées ou erreur
+  if (!userData) {
+    return <Typography>Impossible de charger les informations utilisateur.</Typography>;
+  }
 
   return (
     <Box sx={{ backgroundColor: '#F9FAFB', minHeight: '100vh', p: { xs: 1, sm: 2 } }}>
@@ -57,11 +105,12 @@ const ProfilePage = () => {
             fontSize: { xs: '1.7rem', sm: '2rem' },
           }}
         >
-          E
+          {userData.pseudo.charAt(0).toUpperCase()}
         </Avatar>
         <Typography variant="h5" sx={{ mt: 1, fontWeight: 'bold', color: '#333' }}>
-          Elvira_K
+          {userData.pseudo}
         </Typography>
+        {/* Tu peux mettre date d'inscription si tu la récupères */}
         <Typography variant="subtitle2" color="text.secondary">
           Membre depuis juin 2023
         </Typography>
@@ -116,7 +165,7 @@ const ProfilePage = () => {
           Menu
         </Typography>
         <List>
-          <ListItem button component={Link} to="/edit-profile">
+          <ListItem button component={Link} to="/user-profile">
             <ListItemIcon>
               <AccountCircle />
             </ListItemIcon>

@@ -9,12 +9,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/message')]
-final class MessageController extends AbstractController
+class MessageController extends AbstractController
 {
-    #[Route(name: 'app_message_index', methods: ['GET'])]
+    #[Route('', name: 'app_message_index', methods: ['GET'])]
     public function index(MessageRepository $messageRepository): Response
     {
         return $this->render('message/index.html.twig', [
@@ -33,12 +33,12 @@ final class MessageController extends AbstractController
             $entityManager->persist($message);
             $entityManager->flush();
 
-            return $this->redirectToRoute('app_message_index', [], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('app_message_index');
         }
 
         return $this->render('message/new.html.twig', [
             'message' => $message,
-            'form' => $form,
+            'form' => $form->createView(),
         ]);
     }
 
@@ -59,23 +59,23 @@ final class MessageController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager->flush();
 
-            return $this->redirectToRoute('app_message_index', [], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('app_message_index');
         }
 
         return $this->render('message/edit.html.twig', [
             'message' => $message,
-            'form' => $form,
+            'form' => $form->createView(),
         ]);
     }
 
     #[Route('/{id}', name: 'app_message_delete', methods: ['POST'])]
     public function delete(Request $request, Message $message, EntityManagerInterface $entityManager): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$message->getId(), $request->getPayload()->getString('_token'))) {
+        if ($this->isCsrfTokenValid('delete'.$message->getId(), $request->request->get('_token'))) {
             $entityManager->remove($message);
             $entityManager->flush();
         }
 
-        return $this->redirectToRoute('app_message_index', [], Response::HTTP_SEE_OTHER);
+        return $this->redirectToRoute('app_message_index');
     }
 }

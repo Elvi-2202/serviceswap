@@ -28,11 +28,17 @@ const ServicesPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState(null);
 
+  // URL API backend Symfony
   const API_BASE_URL = 'http://localhost:8000/api/services';
 
+  // Récupération token JWT si tu utilises JWT (adapter si non)
+  const token = localStorage.getItem('jwt_token');
+
   useEffect(() => {
-    // Chargement des services
-    fetch(API_BASE_URL)
+    // Chargement des services avec header Authorization (si besoin)
+    fetch(API_BASE_URL, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Erreur chargement services');
         return res.json();
@@ -42,7 +48,7 @@ const ServicesPage = () => {
         console.error(err);
         setMyServices([]); // en cas d'erreur
       });
-  }, []);
+  }, [token]);
 
   const handleDeleteClick = (service) => {
     setServiceToDelete(service);
@@ -54,13 +60,12 @@ const ServicesPage = () => {
 
     fetch(`${API_BASE_URL}/${serviceToDelete.id}`, {
       method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     })
       .then((res) => {
         if (!res.ok) throw new Error('Erreur suppression service');
         // Mise à jour locale
-        setMyServices((prev) =>
-          prev.filter((s) => s.id !== serviceToDelete.id)
-        );
+        setMyServices((prev) => prev.filter((s) => s.id !== serviceToDelete.id));
         setDeleteDialogOpen(false);
         setServiceToDelete(null);
       })

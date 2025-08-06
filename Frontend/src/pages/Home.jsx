@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   AppBar,
@@ -25,6 +25,7 @@ import {
   Collapse,
   List,
   ListItem,
+  Fade,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -284,7 +285,6 @@ const ServiceFilterDrawer = ({
           }}
         >
           <Typography fontSize={15}>Only favorite trokers</Typography>
-          {/* Custom radio imitation */}
           <span
             onClick={() => setShowOnlyFavorites((v) => !v)}
             style={{
@@ -299,7 +299,6 @@ const ServiceFilterDrawer = ({
             }}
           />
         </Box>
-        {/* Filter Button */}
         <Button
           variant="contained"
           sx={{
@@ -333,15 +332,51 @@ const Home = () => {
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [categoriesSelected, setCategoriesSelected] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
 
-  const services = [
-    { name: "Paul", rating: 4, color: "#5DA271", service1: "2h de ménage", service2: "Réparation sèche cheveux" },
-    { name: "Laurie", rating: 5, color: "#F79CA8", service1: "Coupe de cheveux h/f", service2: "2h garde de chat à domicile" },
-    { name: "Kevin", rating: 5, color: "#9DAAF2", service1: "Petit frigo en bon état", service2: "2h de aide pour déménagement" },
-  ];
+  // État pour services issus de l’API
+  const [services, setServices] = useState([]);
+
+  // Récupérer le token JWT depuis localStorage
+  const token = localStorage.getItem("jwt_token");
+
+  useEffect(() => {
+    fetch("http://localhost:8000/api/home", {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error("Utilisateur non authentifié");
+          } else {
+            throw new Error("Erreur API");
+          }
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setServices(data.services || []);
+      })
+      .catch((error) => {
+        console.error("Erreur API /api/home :", error.message);
+        setServices([]);
+      });
+  }, [token]);
+
+  const handleServiceClick = (service) => {
+    setSelectedService(service);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedService(null);
+  };
 
   const handleLogout = () => {
-    console.log("Déconnexion");
+    localStorage.removeItem("jwt_token");
+    window.location.reload();
   };
 
   return (
@@ -457,7 +492,19 @@ const Home = () => {
         <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
           {services.map((user, idx) => (
             <Grid item xs={12} sm={6} md={4} key={idx}>
-              <Card elevation={3} sx={{ borderRadius: 2 }}>
+              <Card 
+                elevation={3} 
+                sx={{ 
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-3px)",
+                    boxShadow: 6,
+                  }
+                }}
+                onClick={() => handleServiceClick(user)}
+              >
                 <CardContent>
                   <Grid container alignItems="center" spacing={2}>
                     <Grid item>
@@ -472,9 +519,7 @@ const Home = () => {
                       </Avatar>
                     </Grid>
                     <Grid item>
-                      <Typography
-                        sx={{ fontWeight: 600, fontSize: isSmall ? 16 : 18 }}
-                      >
+                      <Typography sx={{ fontWeight: 600, fontSize: isSmall ? 16 : 18 }}>
                         {user.name}
                       </Typography>
                       <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -492,6 +537,85 @@ const Home = () => {
           ))}
         </Grid>
       </Container>
+
+      {/* MODAL DE DÉTAILS DU SERVICE */}
+      <Fade in={selectedService !== null}>
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: "rgba(0,0,0,0.5)",
+            zIndex: 1200,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            p: 2,
+            backdropFilter: "blur(2px)",
+          }}
+          onClick={handleCloseDetails}
+        >
+          <Box
+            sx={{
+              bgcolor: "white",
+              borderRadius: 3,
+              width: "100%",
+              maxWidth: 500,
+              p: 3,
+              boxShadow: 3,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {selectedService && (
+              <>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+                  <Avatar
+                    sx={{
+                      bgcolor: selectedService.color,
+                      width: 56,
+                      height: 56,
+                      mr: 2,
+                    }}
+                  >
+                    {selectedService.name.charAt(0)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {selectedService.name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      ⭐ {selectedService.rating}/5
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Typography variant="body1" paragraph sx={{ whiteSpace: "pre-line" }}>
+                  {selectedService.description}
+                </Typography>
+                
+                <Typography variant="body1" paragraph sx={{ whiteSpace: "pre-line", mb: 3 }}>
+                  {selectedService.details}
+                </Typography>
+                
+                <Button
+                  fullWidth
+                  variant="contained"
+                  sx={{
+                    bgcolor: ACCENT,
+                    py: 1.5,
+                    fontWeight: 600,
+                    "&:hover": { bgcolor: "#B75B3F" },
+                  }}
+                >
+                  Let's make a trok
+                </Button>
+              </>
+            )}
+          </Box>
+        </Box>
+      </Fade>
     </Box>
   );
 };
