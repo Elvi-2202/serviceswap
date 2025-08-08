@@ -6,6 +6,7 @@ namespace App\Entity;
 use App\Repository\EvaluationRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\DBAL\Types\Types;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: EvaluationRepository::class)]
 class Evaluation
@@ -13,17 +14,27 @@ class Evaluation
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['evaluation:read', 'service:read', 'user:read'])]
     private ?int $id = null;
 
     #[ORM\Column]
+    #[Groups(['evaluation:read', 'evaluation:write'])]
     private ?int $score = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['evaluation:read', 'evaluation:write'])]
     private ?string $comment = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'evaluations')] // Relation ManyToOne vers User
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'evaluations')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?User $user = null; // Propriété 'user' pour stocker l'objet User lié
+    #[Groups(['evaluation:read'])]
+    private ?User $user = null;
+
+    #[ORM\ManyToOne(targetEntity: Service::class, inversedBy: 'evaluations')]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['evaluation:read'])]
+    private ?Service $service = null;
+
 
     public function getId(): ?int
     {
@@ -54,15 +65,26 @@ class Evaluation
         return $this;
     }
 
-    public function getUser(): ?User // Getter pour la relation User
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?User $user): static // Setter pour la relation User
+    public function setUser(?User $user): static
     {
         $this->user = $user;
 
+        return $this;
+    }
+
+    public function getService(): ?Service
+    {
+        return $this->service;
+    }
+
+    public function setService(?Service $service): static
+    {
+        $this->service = $service;
         return $this;
     }
 }

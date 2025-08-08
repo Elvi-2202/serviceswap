@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -15,7 +15,6 @@ import {
   IconButton,
   InputAdornment,
   Tooltip,
-  Badge,
   Drawer,
   Slider,
   Switch,
@@ -26,6 +25,8 @@ import {
   List,
   ListItem,
   Fade,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
@@ -35,13 +36,13 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import fr from "date-fns/locale/fr";
-import "@fontsource/poppins";
 import "../App.css";
 
 const ACCENT = "#CF6B4D";
 const BG = "#F9FAFB";
 const HEADER_BG = "#1D1E22";
 const TEXT_COLOR = "#F9FAFB";
+
 const categoriesList = [
   "Plomberie",
   "Menagère",
@@ -94,7 +95,7 @@ const ServiceFilterDrawer = ({
       }}
     >
       <Box sx={{ px: 3, py: 3, minHeight: "100vh", fontFamily: "Poppins, sans-serif" }}>
-        {/* Tab selector */}
+        {/* onglet services/products */}
         <Box
           sx={{
             display: "flex",
@@ -143,7 +144,7 @@ const ServiceFilterDrawer = ({
             Products
           </Box>
         </Box>
-        {/* Distance slider */}
+        {/* slider distance */}
         <Box sx={{ mt: 1, mb: 0.5, color: "#222", fontWeight: 500, fontSize: 15 }}>
           Paris - <b>{distance}km</b>
         </Box>
@@ -183,7 +184,7 @@ const ServiceFilterDrawer = ({
           <span>100km</span>
         </Box>
 
-        {/* Categories */}
+        {/* categories */}
         <Box
           onClick={() => setCategoriesOpen((v) => !v)}
           sx={{
@@ -219,7 +220,7 @@ const ServiceFilterDrawer = ({
           </List>
         </Collapse>
 
-        {/* Date */}
+        {/* date picker */}
         <Box
           onClick={() => setDateOpen(true)}
           sx={{
@@ -253,7 +254,7 @@ const ServiceFilterDrawer = ({
           />
         </LocalizationProvider>
 
-        {/* Switch: Not reserved troks */}
+        {/* Switch Not reserved troks */}
         <Box
           sx={{
             display: "flex",
@@ -273,7 +274,8 @@ const ServiceFilterDrawer = ({
             }}
           />
         </Box>
-        {/* Radio: Only favorite brokers */}
+
+        {/* Only favorite trokers */}
         <Box
           sx={{
             display: "flex",
@@ -299,6 +301,7 @@ const ServiceFilterDrawer = ({
             }}
           />
         </Box>
+
         <Button
           variant="contained"
           sx={{
@@ -326,6 +329,8 @@ const ServiceFilterDrawer = ({
 
 const Home = () => {
   const isSmall = useMediaQuery("(max-width:600px)");
+  const navigate = useNavigate();
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [distance, setDistance] = useState(10);
   const [showNotReserved, setShowNotReserved] = useState(true);
@@ -333,50 +338,91 @@ const Home = () => {
   const [categoriesSelected, setCategoriesSelected] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
+  
+  // NOUVEL ÉTAT POUR LA RECHERCHE
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // État pour services issus de l’API
   const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Récupérer le token JWT depuis localStorage
-  const token = localStorage.getItem("jwt_token");
+  const token = localStorage.getItem("token");
 
+  // MISES À JOUR : Ajout de `searchQuery`
+  const buildQueryParams = useCallback(() => {
+    const params = new URLSearchParams();
+
+    if (distance) params.append("distance", distance);
+    if (searchQuery) params.append("q", searchQuery); // Ajout du terme de recherche
+
+    categoriesSelected.forEach((cat) => {
+      params.append("category", cat);
+    });
+
+    if (selectedDate) {
+      params.append("dateFrom", selectedDate.toISOString().split("T")[0]);
+    }
+
+    if (showNotReserved) params.append("not_reserved", "1");
+    if (showOnlyFavorites) params.append("favorites", "1");
+
+    return params.toString();
+  }, [distance, categoriesSelected, selectedDate, showNotReserved, showOnlyFavorites, searchQuery]);
+
+  // MISES À JOUR : Ajout du debounce pour la recherche
   useEffect(() => {
-    fetch("http://localhost:8000/api/home", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : "",
-      },
-    })
-      .then((res) => {
-        if (!res.ok) {
-          if (res.status === 401) {
+    const fetchServices = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const query = buildQueryParams();
+        const url = `http://localhost:8000/api/services${query ? `?${query}` : ""}`;
+
+        const response = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
             throw new Error("Utilisateur non authentifié");
           } else {
-            throw new Error("Erreur API");
+            const text = await response.text();
+            throw new Error(text || "Erreur chargement services");
           }
         }
-        return res.json();
-      })
-      .then((data) => {
-        setServices(data.services || []);
-      })
-      .catch((error) => {
-        console.error("Erreur API /api/home :", error.message);
+
+        const data = await response.json();
+        setServices(data || []);
+      } catch (e) {
+        setError(e.message || "Erreur réseau");
         setServices([]);
-      });
-  }, [token]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleServiceClick = (service) => {
-    setSelectedService(service);
-  };
+    // Implémentation du debounce
+    const timeoutId = setTimeout(() => {
+      fetchServices();
+    }, 500); // 500ms de délai avant de lancer la recherche
 
-  const handleCloseDetails = () => {
-    setSelectedService(null);
-  };
+    return () => clearTimeout(timeoutId); // Nettoyage du timer
+  }, [buildQueryParams, token]);
+
+
+  const handleServiceClick = (service) => setSelectedService(service);
+  const handleCloseDetails = () => setSelectedService(null);
 
   const handleLogout = () => {
-    localStorage.removeItem("jwt_token");
-    window.location.reload();
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
+  const handleNotificationsClick = () => {
+    navigate("/notifications");
   };
 
   return (
@@ -385,12 +431,7 @@ const Home = () => {
       <AppBar position="static" sx={{ bgcolor: HEADER_BG, px: 2 }}>
         <Toolbar sx={{ justifyContent: "space-between", flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", alignItems: "center" }}>
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              onClick={() => setDrawerOpen(true)}
-              sx={{ mr: 1 }}
-            >
+            <IconButton color="inherit" aria-label="open drawer" onClick={() => setDrawerOpen(true)} sx={{ mr: 1 }}>
               <MenuIcon sx={{ color: ACCENT, width: 30, height: 30 }} />
             </IconButton>
             <Typography
@@ -403,15 +444,17 @@ const Home = () => {
             </Typography>
           </Box>
 
-          {!isSmall && (
+          {/* MISES À JOUR : Champ de recherche visible sur toutes les tailles */}
+          <Box sx={{ flexGrow: 1, mx: isSmall ? 0 : 2, mt: { xs: 1, sm: 0 }, minWidth: { xs: "100%", sm: "auto" } }}>
             <TextField
               variant="outlined"
               size="small"
-              placeholder="Rechercher..."
+              placeholder="Rechercher un service..."
+              value={searchQuery} // Connecté à l'état
+              onChange={(e) => setSearchQuery(e.target.value)} // Met à jour l'état
+              fullWidth
               sx={{
-                width: "40%",
                 bgcolor: "white",
-                ml: 2,
                 borderRadius: 1,
                 "& .MuiOutlinedInput-root": {
                   "& fieldset": { border: "none" },
@@ -425,14 +468,12 @@ const Home = () => {
                 ),
               }}
             />
-          )}
+          </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", mt: { xs: 1, sm: 0 }, gap: 1 }}>
             <Tooltip title="Notifications">
-              <IconButton sx={{ color: TEXT_COLOR }}>
-                <Badge badgeContent={3} color="error">
-                  <NotificationsIcon />
-                </Badge>
+              <IconButton sx={{ color: TEXT_COLOR }} onClick={handleNotificationsClick}>
+                <NotificationsIcon />
               </IconButton>
             </Tooltip>
 
@@ -489,19 +530,37 @@ const Home = () => {
           Échanges Disponibles
         </Typography>
 
+        {loading && (
+          <Box sx={{ textAlign: "center", py: 4 }}>
+            <CircularProgress />
+          </Box>
+        )}
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
         <Grid container spacing={{ xs: 2, sm: 3, md: 4 }}>
+          {!loading && services.length === 0 && (
+            <Typography sx={{ p: 3, textAlign: "center", width: "100%" }}>
+              Aucun service disponible selon vos filtres.
+            </Typography>
+          )}
+
           {services.map((user, idx) => (
             <Grid item xs={12} sm={6} md={4} key={idx}>
-              <Card 
-                elevation={3} 
-                sx={{ 
+              <Card
+                elevation={3}
+                sx={{
                   borderRadius: 2,
                   cursor: "pointer",
                   transition: "transform 0.2s, box-shadow 0.2s",
                   "&:hover": {
                     transform: "translateY(-3px)",
                     boxShadow: 6,
-                  }
+                  },
                 }}
                 onClick={() => handleServiceClick(user)}
               >
@@ -510,26 +569,26 @@ const Home = () => {
                     <Grid item>
                       <Avatar
                         sx={{
-                          bgcolor: user.color,
+                          bgcolor: user.color || ACCENT,
                           width: isSmall ? 40 : 56,
                           height: isSmall ? 40 : 56,
                         }}
                       >
-                        {user.name.charAt(0)}
+                        {(user.name || user.titre || "?").charAt(0)}
                       </Avatar>
                     </Grid>
                     <Grid item>
                       <Typography sx={{ fontWeight: 600, fontSize: isSmall ? 16 : 18 }}>
-                        {user.name}
+                        {user.name || user.titre || "Service"}
                       </Typography>
                       <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                        ⭐ {user.rating}/5
+                        ⭐ {user.rating ?? "N/A"}/5
                       </Typography>
                     </Grid>
                   </Grid>
                   <Box mt={2}>
-                    <Typography variant="body2">{user.service1}</Typography>
-                    <Typography variant="body2">{user.service2}</Typography>
+                    <Typography variant="body2">{user.service1 || user.description}</Typography>
+                    <Typography variant="body2">{user.service2 || ""}</Typography>
                   </Box>
                 </CardContent>
               </Card>
@@ -573,32 +632,32 @@ const Home = () => {
                 <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
                   <Avatar
                     sx={{
-                      bgcolor: selectedService.color,
+                      bgcolor: selectedService.color || ACCENT,
                       width: 56,
                       height: 56,
                       mr: 2,
                     }}
                   >
-                    {selectedService.name.charAt(0)}
+                    {(selectedService.name || selectedService.titre || "?").charAt(0)}
                   </Avatar>
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      {selectedService.name}
+                      {selectedService.name || selectedService.titre || "Service"}
                     </Typography>
                     <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                      ⭐ {selectedService.rating}/5
+                      ⭐ {selectedService.rating ?? "N/A"}/5
                     </Typography>
                   </Box>
                 </Box>
 
                 <Typography variant="body1" paragraph sx={{ whiteSpace: "pre-line" }}>
-                  {selectedService.description}
+                  {selectedService.description || "Pas de description."}
                 </Typography>
-                
+
                 <Typography variant="body1" paragraph sx={{ whiteSpace: "pre-line", mb: 3 }}>
-                  {selectedService.details}
+                  {selectedService.details || ""}
                 </Typography>
-                
+
                 <Button
                   fullWidth
                   variant="contained"

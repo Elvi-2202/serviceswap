@@ -11,6 +11,8 @@ import {
   Paper,
   Avatar,
   useMediaQuery,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   AccountCircle,
@@ -36,55 +38,87 @@ const sectionStyle = {
 
 const ProfilePage = () => {
   const isMobile = useMediaQuery('(max-width:600px)');
-  const [userData, setUserData] = useState(null);
+  
+  // États pour gérer les données de l'utilisateur
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // URL de ton API utilisateur (adapte si besoin)
-  const API_USER_URL = 'http://localhost:8000/api/user/me'; // Exemple si tu as une route user connecté
+  // Simuler une récupération de données depuis une API
+  const fetchUserProfile = async () => {
+    // Récupérer le token de l'utilisateur
+    const token = localStorage.getItem('token');
 
-  // Récupération token JWT localStorage (adapter si autre stockage)
-  const token = localStorage.getItem('jwt_token');
+    // Simuler un appel API
+    // En réalité, vous feriez : fetch('http://votre-api.com/api/user/profile', { headers: { Authorization: `Bearer ${token}` } })
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simule un délai de 1 seconde
+    
+    // Simuler des données utilisateur
+    const mockUserData = {
+      name: 'Elvira_K',
+      memberSince: 'juin 2023',
+    };
+    
+    // Simuler un cas d'erreur
+    if (!token) {
+      setError('Utilisateur non authentifié. Veuillez vous connecter.');
+      setLoading(false);
+      return;
+    }
 
+    try {
+      // Remplacez cette partie par votre appel API réel
+      // const response = await fetch('http://votre-api.com/api/user/profile', {
+      //   headers: { Authorization: `Bearer ${token}` }
+      // });
+      // const userData = await response.json();
+      
+      setUser(mockUserData); // Utilisez userData à la place de mockUserData
+      setLoading(false);
+
+    } catch (e) { // La variable 'e' est maintenant utilisée
+      setError(e.message || 'Erreur lors du chargement des informations de l\'utilisateur.');
+      setLoading(false);
+    }
+  };
+
+  // useEffect pour charger les données une fois au montage du composant
   useEffect(() => {
-    // Appel à l'API pour récupérer les données utilisateur
-    fetch(API_USER_URL, {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Erreur de récupération utilisateur');
-        return res.json();
-      })
-      .then((data) => {
-        setUserData({
-          pseudo: data.pseudo || 'Utilisateur',
-          description: data.description || '',
-          // Adaptation selon ton API: ici on mappe les champs aux noms affichés
-          localisation: data.localisation || '',
-          email: data.email || '',
-          // Ajoute ici autres champs si disponibles, par ex.
-          // dateNaissance, genre, langue, etc.
-          // Si non fournis par API, tu peux garder les valeurs par défaut
-        });
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, [API_USER_URL, token]);
+    fetchUserProfile();
+  }, []); // Le tableau de dépendances est vide pour exécuter l'effet une seule fois
 
+  // Affichage de l'état de chargement
   if (loading) {
-    return <Typography>Chargement du profil...</Typography>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
-  // Si les données ne sont pas encore chargées ou erreur
-  if (!userData) {
-    return <Typography>Impossible de charger les informations utilisateur.</Typography>;
+  // Affichage de l'état d'erreur
+  if (error) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Alert severity="error">{error}</Alert>
+        <Button 
+          variant="contained" 
+          component={Link} 
+          to="/login" 
+          sx={{ mt: 2, bgcolor: '#CF6B4D', '&:hover': { bgcolor: '#B75B3F' } }}
+        >
+          Se connecter
+        </Button>
+      </Box>
+    );
   }
 
+  // Si user est null (dans le cas où on ne gère pas l'erreur mais que les données sont manquantes)
+  if (!user) {
+    return <Alert severity="warning">Aucune donnée utilisateur à afficher.</Alert>;
+  }
+
+  // Affichage du profil une fois les données chargées
   return (
     <Box sx={{ backgroundColor: '#F9FAFB', minHeight: '100vh', p: { xs: 1, sm: 2 } }}>
       {/* ✅ Header */}
@@ -105,14 +139,13 @@ const ProfilePage = () => {
             fontSize: { xs: '1.7rem', sm: '2rem' },
           }}
         >
-          {userData.pseudo.charAt(0).toUpperCase()}
+          {user.name.charAt(0)}
         </Avatar>
         <Typography variant="h5" sx={{ mt: 1, fontWeight: 'bold', color: '#333' }}>
-          {userData.pseudo}
+          {user.name}
         </Typography>
-        {/* Tu peux mettre date d'inscription si tu la récupères */}
         <Typography variant="subtitle2" color="text.secondary">
-          Membre depuis juin 2023
+          Membre depuis {user.memberSince}
         </Typography>
 
         {/* ✅ Boutons : Mes Services / Mes Troc */}

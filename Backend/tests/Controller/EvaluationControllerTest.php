@@ -3,117 +3,260 @@
 namespace App\Tests\Controller;
 
 use App\Entity\Evaluation;
+use App\Entity\User;
+use App\Entity\Service;
+use App\Entity\Categorie;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 final class EvaluationControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $manager;
     private EntityRepository $evaluationRepository;
-    private string $path = '/evaluation/';
+    private EntityRepository $userRepository;
+    private EntityRepository $serviceRepository;
+    private EntityRepository $categorieRepository;
+    private UserPasswordHasherInterface $passwordHasher;
+    private string $path = '/api/evaluation'; // Chemin de l'API
+    private ?string $authToken = null;
+    private ?User $testUser = null;
+    private ?Service $testService = null;
 
     protected function setUp(): void
     {
         $this->client = static::createClient();
         $this->manager = static::getContainer()->get('doctrine')->getManager();
         $this->evaluationRepository = $this->manager->getRepository(Evaluation::class);
+        $this->userRepository = $this->manager->getRepository(User::class);
+        $this->serviceRepository = $this->manager->getRepository(Service::class);
+        $this->categorieRepository = $this->manager->getRepository(Categorie::class);
+        $this->passwordHasher = static::getContainer()->get('security.user_password_hasher');
 
+        // Nettoyage de la base de données dans l'ordre inverse des dépendances
+        // L'ordre a été corrigé ici pour éviter l'erreur "Column not found"
         foreach ($this->evaluationRepository->findAll() as $object) {
             $this->manager->remove($object);
         }
+        foreach ($this->serviceRepository->findAll() as $object) {
+            $this->manager->remove($object);
+        }
+        foreach ($this->categorieRepository->findAll() as $object) {
+            $this->manager->remove($object);
+        }
+        foreach ($this->userRepository->findAll() as $object) {
+            $this->manager->remove($object);
+        }
+        $this->manager->flush();
+
+        // Création des dépendances pour les tests
+        $this->testUser = new User();
+        $this->testUser->setEmail('test_user_eval_' . uniqid() . '@example.com');
+        $this->testUser->setPseudo('test_eval_user');
+        $this->testUser->setLocalisation('TestLoc');
+        $this->testUser->setDescription('TestDesc');
+        $this->testUser->setPassword($this->passwordHasher->hashPassword($this->testUser, 'password'));
+        $this->manager->persist($this->testUser);
+
+        $categorie = new Categorie();
+        $categorie->setName('Test Catégorie ' . uniqid());
+        $this->manager->persist($categorie);
+
+        $this->testService = new Service();
+        $this->testService->setTitre('Test Service ' . uniqid());
+        $this->testService->setDescription('Test Description');
+        $this->testService->setStatut('actif');
+        $this->testService->setUser($this->testUser);
+        $this->testService->setCategory($categorie);
+        $this->manager->persist($this->testService);
 
         $this->manager->flush();
+
+        // Récupération du jeton JWT pour l'authentification
+        $this->authToken = $this->getJwtToken($this->client, $this->testUser->getEmail(), 'password');
+    }
+
+    private function getJwtToken(KernelBrowser $client, string $email, string $password): ?string
+    {
+        $client->request(
+            Request::METHOD_POST,
+            '/api/login_check',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode([
+                'email' => $email,
+                'password' => $password,
+            ])
+        );
+
+        $response = $client->getResponse();
+        $data = json_decode($response->getContent(), true);
+
+        self::assertResponseIsSuccessful('Échec de l\'obtention du jeton JWT : ' . ($data['message'] ?? $response->getContent()));
+        self::assertArrayHasKey('token', $data, 'Jeton JWT non trouvé dans la réponse.');
+
+        return $data['token'] ?? null;
+    }
+
+    private function getAuthenticatedClient(): KernelBrowser
+    {
+        if ($this->authToken) {
+            $this->client->setServerParameter('HTTP_Authorization', sprintf('Bearer %s', $this->authToken));
+        }
+        return $this->client;
     }
 
     public function testIndex(): void
     {
-        $this->client->followRedirects();
-        $crawler = $this->client->request('GET', $this->path);
+        $fixture = new Evaluation();
+        $fixture->setScore(5);
+        $fixture->setComment('Excellent service.');
+        $fixture->setUser($this->testUser);
+        $fixture->setService($this->testService);
+        $this->manager->persist($fixture);
+        $this->manager->flush();
 
-        self::assertResponseStatusCodeSame(200);
-        self::assertPageTitleContains('Evaluation index');
+        $this->getAuthenticatedClient()->request(Request::METHOD_GET, $this->path);
 
-        // Use the $crawler to perform additional assertions e.g.
-        // self::assertSame('Some text on the page', $crawler->filter('.p')->first());
+        self::assertResponseIsSuccessful();
+        self::assertResponseFormatSame('json');
+        $responseData = json_decode($this->client->getResponse()->getContent(), true);
+
+        self::assertIsArray($responseData);
+        self::assertCount(1, $responseData);
+        self::assertArrayHasKey('id', $responseData[0]);
+        self::assertArrayHasKey('score', $responseData[0]);
+        self::assertArrayHasKey('comment', $responseData[0]);
+        self::assertArrayHasKey('user', $responseData[0]);
+        self::assertArrayHasKey('service', $responseData[0]);
+        self::assertSame(5, $responseData[0]['score']);
+        self::assertSame($this->testUser->getId(), $responseData[0]['user']['id']);
+        self::assertSame($this->testService->getId(), $responseData[0]['service']['id']);
     }
 
     public function testNew(): void
     {
-        $this->markTestIncomplete();
-        $this->client->request('GET', sprintf('%snew', $this->path));
+        $payload = [
+            'score' => 4,
+            'comment' => 'Bon service.',
+            'user_id' => $this->testUser->getId(),
+            'service_id' => $this->testService->getId(),
+        ];
 
-        self::assertResponseStatusCodeSame(200);
+        $this->getAuthenticatedClient()->request(
+            Request::METHOD_POST,
+            $this->path,
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode($payload)
+        );
 
-        $this->client->submitForm('Save', [
-            'evaluation[note]' => 'Testing',
-            'evaluation[commentaire]' => 'Testing',
-        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertResponseFormatSame('json');
 
-        self::assertResponseRedirects($this->path);
-
+        $responseData = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertArrayHasKey('id', $responseData);
+        self::assertArrayHasKey('score', $responseData);
+        self::assertArrayHasKey('comment', $responseData);
+        self::assertArrayHasKey('user', $responseData);
+        self::assertArrayHasKey('service', $responseData);
+        self::assertSame($payload['score'], $responseData['score']);
+        self::assertSame($this->testUser->getId(), $responseData['user']['id']);
+        self::assertSame($this->testService->getId(), $responseData['service']['id']);
+        
         self::assertSame(1, $this->evaluationRepository->count([]));
     }
 
     public function testShow(): void
     {
-        $this->markTestIncomplete();
         $fixture = new Evaluation();
-        $fixture->setNote('My Title');
-        $fixture->setCommentaire('My Title');
-
+        $fixture->setScore(3);
+        $fixture->setComment('Service moyen.');
+        $fixture->setUser($this->testUser);
+        $fixture->setService($this->testService);
         $this->manager->persist($fixture);
         $this->manager->flush();
 
-        $this->client->request('GET', sprintf('%s%s', $this->path, $fixture->getId()));
+        $this->getAuthenticatedClient()->request(Request::METHOD_GET, sprintf('%s/%s', $this->path, $fixture->getId()));
 
-        self::assertResponseStatusCodeSame(200);
-        self::assertPageTitleContains('Evaluation');
+        self::assertResponseIsSuccessful();
+        self::assertResponseFormatSame('json');
+        $responseData = json_decode($this->client->getResponse()->getContent(), true);
 
-        // Use assertions to check that the properties are properly displayed.
+        self::assertArrayHasKey('id', $responseData);
+        self::assertArrayHasKey('score', $responseData);
+        self::assertArrayHasKey('comment', $responseData);
+        self::assertArrayHasKey('user', $responseData);
+        self::assertArrayHasKey('service', $responseData);
+        self::assertSame($fixture->getId(), $responseData['id']);
+        self::assertSame($fixture->getScore(), $responseData['score']);
+        self::assertSame($this->testUser->getId(), $responseData['user']['id']);
+        self::assertSame($this->testService->getId(), $responseData['service']['id']);
     }
 
     public function testEdit(): void
     {
-        $this->markTestIncomplete();
         $fixture = new Evaluation();
-        $fixture->setNote('Value');
-        $fixture->setCommentaire('Value');
-
+        $fixture->setScore(1);
+        $fixture->setComment('Mauvais service.');
+        $fixture->setUser($this->testUser);
+        $fixture->setService($this->testService);
         $this->manager->persist($fixture);
         $this->manager->flush();
 
-        $this->client->request('GET', sprintf('%s%s/edit', $this->path, $fixture->getId()));
+        $updatedPayload = [
+            'score' => 2,
+            'comment' => 'Peut mieux faire.',
+            'user_id' => $this->testUser->getId(), // Inclure si modifiable
+            'service_id' => $this->testService->getId(), // Inclure si modifiable
+        ];
 
-        $this->client->submitForm('Update', [
-            'evaluation[note]' => 'Something New',
-            'evaluation[commentaire]' => 'Something New',
-        ]);
+        $this->getAuthenticatedClient()->request(
+            Request::METHOD_PUT,
+            sprintf('%s/%s', $this->path, $fixture->getId()),
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode($updatedPayload)
+        );
 
-        self::assertResponseRedirects('/evaluation/');
+        self::assertResponseIsSuccessful();
+        self::assertResponseFormatSame('json');
 
-        $fixture = $this->evaluationRepository->findAll();
-
-        self::assertSame('Something New', $fixture[0]->getNote());
-        self::assertSame('Something New', $fixture[0]->getCommentaire());
+        $updatedEvaluation = $this->evaluationRepository->find($fixture->getId());
+        self::assertNotNull($updatedEvaluation);
+        self::assertSame($updatedPayload['score'], $updatedEvaluation->getScore());
+        self::assertSame($updatedPayload['comment'], $updatedEvaluation->getComment());
     }
 
     public function testRemove(): void
     {
-        $this->markTestIncomplete();
         $fixture = new Evaluation();
-        $fixture->setNote('Value');
-        $fixture->setCommentaire('Value');
-
+        $fixture->setScore(5);
+        $fixture->setComment('Pourrait être supprimé.');
+        $fixture->setUser($this->testUser);
+        $fixture->setService($this->testService);
         $this->manager->persist($fixture);
         $this->manager->flush();
 
-        $this->client->request('GET', sprintf('%s%s', $this->path, $fixture->getId()));
-        $this->client->submitForm('Delete');
+        $evaluationId = $fixture->getId();
 
-        self::assertResponseRedirects('/evaluation/');
-        self::assertSame(0, $this->evaluationRepository->count([]));
+        $this->getAuthenticatedClient()->request(
+            Request::METHOD_DELETE,
+            sprintf('%s/%s', $this->path, $evaluationId)
+        );
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $deletedEvaluation = $this->evaluationRepository->find($evaluationId);
+        self::assertNull($deletedEvaluation, 'L\'évaluation doit être null après suppression.');
+        self::assertSame(0, $this->evaluationRepository->count([]), 'Le nombre d\'évaluations doit être 0 après suppression.');
     }
 }

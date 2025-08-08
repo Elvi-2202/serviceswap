@@ -1,10 +1,11 @@
+// src/components/CategoriesPage.js
+
 import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Paper,
-  TextField,
   Button,
+  TextField,
   List,
   ListItem,
   ListItemText,
@@ -13,18 +14,47 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
+  Paper,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 
-const URL_GET_CATEGORIES = 'http://localhost:8000/api/categorie';
-const URL_CREATE_CATEGORY = 'http://localhost:8000/api/categorie/new';
-const URL_EDIT_CATEGORY_BASE = 'http://localhost:8000/api/categorie'; // + /{id}/edit
-const URL_DELETE_CATEGORY_BASE = 'http://localhost:8000/api/categorie'; // + /{id}
+// Centralisation des URLs API
+const API_URLS = {
+  getCategories: 'http://localhost:8000/api/categorie',
+  createCategory: 'http://localhost:8000/api/categorie/new',
+  editCategory: (id) => `http://localhost:8000/api/categorie/${id}/edit`,
+  deleteCategory: (id) => `http://localhost:8000/api/categorie/${id}`,
+};
+
+// Fonction d'aide pour gérer les requêtes fetch de manière DRY (Don't Repeat Yourself)
+const apiFetch = async (url, options = {}) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(errorData || 'Une erreur est survenue.');
+  }
+  return response.json();
+};
 
 const CategoriesPage = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [name, setName] = useState('');
   const [editId, setEditId] = useState(null);
@@ -33,33 +63,46 @@ const CategoriesPage = () => {
   const [deleteId, setDeleteId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+
+  // Correction de l'erreur : La fonction de fetch est maintenant à l'intérieur de l'effet.
   useEffect(() => {
-    fetch(URL_GET_CATEGORIES)
-      .then(res => res.json())
-      .then(data => {
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const data = await apiFetch(API_URLS.getCategories);
         setCategories(data);
+      } catch (e) {
+        handleSnackbarOpen(e.message, 'error');
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    };
+    fetchCategories();
   }, []);
 
-  const handleCreate = () => {
-    if (!name.trim()) return alert('Le nom est requis');
+  const handleCreate = async () => {
+    if (!name.trim()) {
+      handleSnackbarOpen('Le nom de la catégorie est requis.', 'warning');
+      return;
+    }
 
-    fetch(URL_CREATE_CATEGORY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Erreur création');
-        return res.json();
-      })
-      .then(newCat => {
-        setCategories(prev => [...prev, newCat]);
-        setName('');
-      })
-      .catch(err => alert(err.message));
+    setIsCreating(true);
+    try {
+      const newCat = await apiFetch(API_URLS.createCategory, {
+        method: 'POST',
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      setCategories((prev) => [...prev, newCat]);
+      setName('');
+      handleSnackbarOpen('Catégorie ajoutée avec succès !', 'success');
+    } catch (e) {
+      handleSnackbarOpen(e.message, 'error');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const startEdit = (cat) => {
@@ -72,25 +115,28 @@ const CategoriesPage = () => {
     setEditName('');
   };
 
-  const handleEditSave = () => {
-    if (!editName.trim()) return alert('Le nom est requis');
+  const handleEditSave = async () => {
+    if (!editName.trim()) {
+      handleSnackbarOpen('Le nom est requis.', 'warning');
+      return;
+    }
 
-    fetch(`${URL_EDIT_CATEGORY_BASE}/${editId}/edit`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editName.trim() }),
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Erreur mise à jour');
-        return res.json();
-      })
-      .then(updatedCat => {
-        setCategories(prev =>
-          prev.map(c => (c.id === editId ? updatedCat : c))
-        );
-        cancelEdit();
-      })
-      .catch(err => alert(err.message));
+    setIsUpdating(true);
+    try {
+      const updatedCat = await apiFetch(API_URLS.editCategory(editId), {
+        method: 'PUT',
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      setCategories((prev) =>
+        prev.map((c) => (c.id === editId ? updatedCat : c))
+      );
+      cancelEdit();
+      handleSnackbarOpen('Catégorie mise à jour avec succès !', 'success');
+    } catch (e) {
+      handleSnackbarOpen(e.message, 'error');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const openDeleteDialog = (id) => {
@@ -98,21 +144,39 @@ const CategoriesPage = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDelete = () => {
-    fetch(`${URL_DELETE_CATEGORY_BASE}/${deleteId}`, { method: 'DELETE' })
-      .then(res => {
-        if (!res.ok) throw new Error('Erreur suppression');
-        return res.json();
-      })
-      .then(() => {
-        setCategories(prev => prev.filter(c => c.id !== deleteId));
-        setDeleteDialogOpen(false);
-        setDeleteId(null);
-      })
-      .catch(err => alert(err.message));
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await apiFetch(API_URLS.deleteCategory(deleteId), {
+        method: 'DELETE',
+      });
+      setCategories((prev) => prev.filter((c) => c.id !== deleteId));
+      handleSnackbarOpen('Catégorie supprimée avec succès !', 'success');
+    } catch (e) {
+      handleSnackbarOpen(e.message, 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setDeleteId(null);
+      setIsDeleting(false);
+    }
   };
 
-  if (loading) return <Typography>Chargement...</Typography>;
+  const handleSnackbarOpen = (message, severity) => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  if (loading)
+    return (
+      <Box sx={{ textAlign: 'center', pt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
 
   return (
     <Box sx={{ maxWidth: 600, margin: 'auto', p: 3 }}>
@@ -126,11 +190,17 @@ const CategoriesPage = () => {
           <TextField
             label="Nom"
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             fullWidth
+            disabled={isCreating}
           />
-          <Button variant="contained" onClick={handleCreate}>
-            Ajouter
+          <Button
+            variant="contained"
+            onClick={handleCreate}
+            disabled={isCreating}
+            sx={{ minWidth: '120px' }}
+          >
+            {isCreating ? <CircularProgress size={24} /> : 'Ajouter'}
           </Button>
         </Box>
       </Paper>
@@ -140,32 +210,64 @@ const CategoriesPage = () => {
           Liste des catégories
         </Typography>
         <List>
-          {categories.map(cat => (
-            <ListItem key={cat.id}
+          {categories.length === 0 && (
+            <Typography sx={{ color: 'text.secondary' }}>
+              Aucune catégorie disponible.
+            </Typography>
+          )}
+          {categories.map((cat) => (
+            <ListItem
+              key={cat.id}
               secondaryAction={
-                <>
-                  <IconButton edge="end" onClick={() => startEdit(cat)} aria-label="edit">
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton edge="end" color="error" onClick={() => openDeleteDialog(cat.id)} aria-label="delete">
-                    <DeleteIcon />
-                  </IconButton>
-                </>
+                editId !== cat.id && (
+                  <>
+                    <IconButton
+                      edge="end"
+                      onClick={() => startEdit(cat)}
+                      aria-label="edit"
+                      disabled={isUpdating || isDeleting}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      color="error"
+                      onClick={() => openDeleteDialog(cat.id)}
+                      aria-label="delete"
+                      disabled={isUpdating || isDeleting}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </>
+                )
               }
             >
               {editId === cat.id ? (
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%' }}>
                   <TextField
                     value={editName}
-                    onChange={e => setEditName(e.target.value)}
+                    onChange={(e) => setEditName(e.target.value)}
                     size="small"
                     fullWidth
+                    disabled={isUpdating}
                   />
-                  <Button variant="contained" color="success" onClick={handleEditSave}>
-                    Sauvegarder
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleEditSave}
+                    size="small"
+                    disabled={isUpdating}
+                  >
+                    <SaveIcon />
                   </Button>
-                  <Button variant="outlined" color="inherit" onClick={cancelEdit}>
-                    Annuler
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    onClick={cancelEdit}
+                    size="small"
+                    disabled={isUpdating}
+                  >
+                    <CancelIcon />
                   </Button>
                 </Box>
               ) : (
@@ -173,7 +275,6 @@ const CategoriesPage = () => {
               )}
             </ListItem>
           ))}
-          {categories.length === 0 && <Typography>Aucune catégorie disponible.</Typography>}
         </List>
       </Paper>
 
@@ -183,12 +284,23 @@ const CategoriesPage = () => {
           Êtes-vous sûr de vouloir supprimer cette catégorie ? Cette action est irréversible.
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
-          <Button color="error" variant="contained" onClick={handleDelete}>
-            Supprimer
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>Annuler</Button>
+          <Button color="error" variant="contained" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? <CircularProgress size={24} /> : 'Supprimer'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

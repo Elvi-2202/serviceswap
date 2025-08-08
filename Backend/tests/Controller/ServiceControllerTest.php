@@ -3,129 +3,243 @@
 namespace App\Tests\Controller;
 
 use App\Entity\Service;
+use App\Entity\User;
+use App\Entity\Categorie;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\EntityRepository;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\Response;
 
-final class ServiceControllerTest extends WebTestCase
+class ServiceControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
-    private EntityManagerInterface $manager;
-    private EntityRepository $serviceRepository;
-    private string $path = '/service/';
+    private EntityManagerInterface $entityManager;
+    private string $token;
+    private User $testUser;
+    private Categorie $testCategory;
 
     protected function setUp(): void
     {
         $this->client = static::createClient();
-        $this->manager = static::getContainer()->get('doctrine')->getManager();
-        $this->serviceRepository = $this->manager->getRepository(Service::class);
+        $container = static::getContainer();
+        
+        $this->entityManager = $container->get('doctrine')->getManager();
+        $passwordHasher = $container->get('security.user_password_hasher');
 
-        foreach ($this->serviceRepository->findAll() as $object) {
-            $this->manager->remove($object);
+        // Nettoyer la base de données
+        $this->cleanDatabase();
+
+        // Créer un utilisateur de test
+        $this->testUser = new User();
+        $this->testUser->setEmail('testuser@example.com');
+        $this->testUser->setPseudo('testuser');
+        $this->testUser->setPassword($passwordHasher->hashPassword($this->testUser, 'password'));
+        $this->testUser->setRoles(['ROLE_USER']);
+        $this->entityManager->persist($this->testUser);
+
+        // Créer une catégorie de test
+        $this->testCategory = new Categorie();
+        $this->testCategory->setName('Test Category');
+        $this->entityManager->persist($this->testCategory);
+
+        $this->entityManager->flush();
+
+        // Obtenir le token JWT
+        $this->token = $this->getJwtToken();
+    }
+
+    private function cleanDatabase(): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $platform = $connection->getDatabasePlatform();
+        
+        // Vérification du type de base de données sans utiliser getName()
+        if ($platform instanceof \Doctrine\DBAL\Platforms\MySQLPlatform) {
+            $connection->executeQuery('SET FOREIGN_KEY_CHECKS=0');
         }
 
-        $this->manager->flush();
+        $tables = ['service', 'categorie', 'user'];
+        foreach ($tables as $table) {
+            $connection->executeQuery("DELETE FROM $table");
+        }
+
+        if ($platform instanceof \Doctrine\DBAL\Platforms\MySQLPlatform) {
+            $connection->executeQuery('SET FOREIGN_KEY_CHECKS=1');
+        }
     }
 
-    public function testIndex(): void
+    private function getJwtToken(): string
     {
-        $this->client->followRedirects();
-        $crawler = $this->client->request('GET', $this->path);
+        $this->client->request(
+            'POST',
+            '/api/login_check',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode([
+                'email' => 'testuser@example.com',
+                'password' => 'password'
+            ])
+        );
 
-        self::assertResponseStatusCodeSame(200);
-        self::assertPageTitleContains('Service index');
+        $response = $this->client->getResponse();
+        $data = json_decode($response->getContent(), true);
 
-        // Use the $crawler to perform additional assertions e.g.
-        // self::assertSame('Some text on the page', $crawler->filter('.p')->first());
+        if (!isset($data['token'])) {
+            throw new \RuntimeException('Token not received: ' . $response->getContent());
+        }
+
+        return $data['token'];
     }
 
-    public function testNew(): void
+    protected function tearDown(): void
     {
-        $this->markTestIncomplete();
-        $this->client->request('GET', sprintf('%snew', $this->path));
-
-        self::assertResponseStatusCodeSame(200);
-
-        $this->client->submitForm('Save', [
-            'service[titre]' => 'Testing',
-            'service[description]' => 'Testing',
-            'service[catégorie]' => 'Testing',
-            'service[statut]' => 'Testing',
-        ]);
-
-        self::assertResponseRedirects($this->path);
-
-        self::assertSame(1, $this->serviceRepository->count([]));
+        parent::tearDown();
+        $this->entityManager->close();
     }
 
-    public function testShow(): void
+    public function testIndexApi(): void
     {
-        $this->markTestIncomplete();
-        $fixture = new Service();
-        $fixture->setTitre('My Title');
-        $fixture->setDescription('My Title');
-        $fixture->setCatégorie('My Title');
-        $fixture->setStatut('My Title');
+        $service = new Service();
+        $service->setTitre('Test Service');
+        $service->setDescription('Description');
+        $service->setStatut('actif');
+        $service->setUser($this->testUser);
+        $service->setCategory($this->testCategory);
+        $this->entityManager->persist($service);
+        $this->entityManager->flush();
 
-        $this->manager->persist($fixture);
-        $this->manager->flush();
+        $this->client->request(
+            'GET',
+            '/api/services',
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+                'CONTENT_TYPE' => 'application/json'
+            ]
+        );
 
-        $this->client->request('GET', sprintf('%s%s', $this->path, $fixture->getId()));
-
-        self::assertResponseStatusCodeSame(200);
-        self::assertPageTitleContains('Service');
-
-        // Use assertions to check that the properties are properly displayed.
+        $this->assertResponseIsSuccessful();
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertNotEmpty($response);
+        $this->assertEquals('Test Service', $response[0]['titre']);
     }
 
-    public function testEdit(): void
+    public function testCreateServiceApi(): void
     {
-        $this->markTestIncomplete();
-        $fixture = new Service();
-        $fixture->setTitre('Value');
-        $fixture->setDescription('Value');
-        $fixture->setCatégorie('Value');
-        $fixture->setStatut('Value');
+        $this->client->request(
+            'POST',
+            '/api/services',
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+                'CONTENT_TYPE' => 'application/json'
+            ],
+            json_encode([
+                'titre' => 'New Service',
+                'description' => 'New Description',
+                'statut' => 'actif',
+                'category' => $this->testCategory->getId()
+            ])
+        );
 
-        $this->manager->persist($fixture);
-        $this->manager->flush();
-
-        $this->client->request('GET', sprintf('%s%s/edit', $this->path, $fixture->getId()));
-
-        $this->client->submitForm('Update', [
-            'service[titre]' => 'Something New',
-            'service[description]' => 'Something New',
-            'service[catégorie]' => 'Something New',
-            'service[statut]' => 'Something New',
-        ]);
-
-        self::assertResponseRedirects('/service/');
-
-        $fixture = $this->serviceRepository->findAll();
-
-        self::assertSame('Something New', $fixture[0]->getTitre());
-        self::assertSame('Something New', $fixture[0]->getDescription());
-        self::assertSame('Something New', $fixture[0]->getCatégorie());
-        self::assertSame('Something New', $fixture[0]->getStatut());
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertEquals('Service ajouté avec succès', $response['message']);
     }
 
-    public function testRemove(): void
+    public function testShowApi(): void
     {
-        $this->markTestIncomplete();
-        $fixture = new Service();
-        $fixture->setTitre('Value');
-        $fixture->setDescription('Value');
-        $fixture->setCatégorie('Value');
-        $fixture->setStatut('Value');
+        $service = new Service();
+        $service->setTitre('Test Show');
+        $service->setDescription('Description');
+        $service->setStatut('actif');
+        $service->setUser($this->testUser);
+        $service->setCategory($this->testCategory);
+        $this->entityManager->persist($service);
+        $this->entityManager->flush();
 
-        $this->manager->persist($fixture);
-        $this->manager->flush();
+        $this->client->request(
+            'GET',
+            '/api/services/'.$service->getId(),
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+                'CONTENT_TYPE' => 'application/json'
+            ]
+        );
 
-        $this->client->request('GET', sprintf('%s%s', $this->path, $fixture->getId()));
-        $this->client->submitForm('Delete');
+        $this->assertResponseIsSuccessful();
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertEquals('Test Show', $response['titre']);
+    }
 
-        self::assertResponseRedirects('/service/');
-        self::assertSame(0, $this->serviceRepository->count([]));
+    public function testEditApi(): void
+    {
+        $service = new Service();
+        $service->setTitre('Before Edit');
+        $service->setDescription('Description');
+        $service->setStatut('actif');
+        $service->setUser($this->testUser);
+        $service->setCategory($this->testCategory);
+        $this->entityManager->persist($service);
+        $this->entityManager->flush();
+        $serviceId = $service->getId();
+
+        $this->entityManager->clear(); // Important pour éviter l'erreur "Entity is not managed"
+
+        $this->client->request(
+            'PUT',
+            '/api/services/'.$serviceId,
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+                'CONTENT_TYPE' => 'application/json'
+            ],
+            json_encode([
+                'titre' => 'After Edit',
+                'description' => 'Updated Description',
+                'statut' => 'inactif'
+            ])
+        );
+
+        $this->assertResponseIsSuccessful();
+        
+        // Recharger l'entité depuis la base
+        $updatedService = $this->entityManager->getRepository(Service::class)->find($serviceId);
+        $this->assertEquals('After Edit', $updatedService->getTitre());
+        $this->assertEquals('Updated Description', $updatedService->getDescription());
+        $this->assertEquals('inactif', $updatedService->getStatut());
+    }
+
+    public function testRemoveApi(): void
+    {
+        $service = new Service();
+        $service->setTitre('To Delete');
+        $service->setDescription('Description');
+        $service->setStatut('actif');
+        $service->setUser($this->testUser);
+        $service->setCategory($this->testCategory);
+        $this->entityManager->persist($service);
+        $this->entityManager->flush();
+        $id = $service->getId();
+
+        $this->client->request(
+            'DELETE',
+            '/api/services/'.$id,
+            [],
+            [],
+            [
+                'HTTP_AUTHORIZATION' => 'Bearer '.$this->token,
+                'CONTENT_TYPE' => 'application/json'
+            ]
+        );
+
+        $this->assertResponseIsSuccessful();
+        $this->assertNull($this->entityManager->getRepository(Service::class)->find($id));
     }
 }

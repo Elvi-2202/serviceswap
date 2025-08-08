@@ -8,7 +8,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 const UserIcon = () => (
   <svg
@@ -69,6 +72,7 @@ const PaperclipIcon = () => (
 );
 
 const EditAccountPage = () => {
+  const navigate = useNavigate();
   const [accountData, setAccountData] = useState({
     nom: '',
     prenom: '',
@@ -80,23 +84,27 @@ const EditAccountPage = () => {
     langue: '',
     email: '',
     motDePasse: '',
-    pieceIdentite: '',
+    pieceIdentite: null, // Initialisé à null pour stocker l'objet File
+    photoProfil: null,  // Nouveau champ pour la photo de profil
   });
 
-  const [editMode, setEditMode] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const photoInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Récupérer token JWT (adapter si autre stockage)
-  const token = localStorage.getItem('jwt_token');
-
-  // Pour récupérer l'id user connecté : 
-  // Soit tu stockes l'id dans localStorage/sessionStorage, soit tu as un endpoint '/api/user/me'
-  // Ici, exemple d'usage d'/api/user/me pour obtenir les données
+  // La bonne URL pour récupérer les données de l'utilisateur
   const API_USER_ME_URL = 'http://localhost:8000/api/user/me';
 
   useEffect(() => {
-    if (!token) return;
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      setError("Vous n'êtes pas connecté. Veuillez vous authentifier.");
+      return;
+    }
 
     fetch(API_USER_ME_URL, {
       headers: {
@@ -109,8 +117,9 @@ const EditAccountPage = () => {
         return res.json();
       })
       .then(data => {
-        // Adapter ces champs en fonction de la structure JSON renvoyée par ta route user
         setAccountData({
+          // Les champs sont mis à jour pour correspondre à la réponse de votre API simplifiée
+          // Nous conservons la structure pour les champs qui pourraient être ajoutés plus tard
           nom: data.nom || '',
           prenom: data.prenom || '',
           nomUtilisateur: data.pseudo || '',
@@ -120,21 +129,33 @@ const EditAccountPage = () => {
           paysRegion: data.localisation || '',
           langue: data.langue || '',
           email: data.email || '',
-          motDePasse: '', // Ne jamais mettre en clair, champ vide par défaut
-          pieceIdentite: data.pieceIdentite || '',
+          motDePasse: '',
+          pieceIdentite: data.pieceIdentite || null,
+          photoProfil: data.photoProfil || null,
         });
+        setLoading(false);
       })
       .catch(err => {
         console.error(err);
+        setError("Erreur lors de la récupération des données. Veuillez réessayer.");
+        setLoading(false);
       });
-  }, [token]);
+  }, []);
 
   const handleChange = (name, value) => {
     setAccountData(prev => ({ ...prev, [name]: value }));
   };
 
-  const toggleEdit = (name, value) => {
-    setEditMode(prev => ({ ...prev, [name]: value }));
+  const handlePhotoClick = () => {
+    photoInputRef.current.click();
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleChange('photoProfil', file); // Stocker l'objet File
+      console.log('Photo de profil sélectionnée:', file.name);
+    }
   };
 
   const handleFileIconClick = () => {
@@ -143,69 +164,85 @@ const EditAccountPage = () => {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      handleChange('pieceIdentite', file.name);
-      console.log('Fichier sélectionné:', file.name);
+    if (file && file.type === 'application/pdf') {
+      handleChange('pieceIdentite', file); // Stocker l'objet File
+      console.log('Fichier PDF sélectionné:', file.name);
+    } else {
+      alert("Veuillez sélectionner un fichier PDF.");
     }
   };
 
   const handleSaveChanges = () => {
+    const token = localStorage.getItem('token');
     if (!token) {
       alert("Tu dois être connecté.e pour modifier ton profil.");
       return;
     }
 
-    // On suppose que tu as une route PUT pour mettre à jour l'utilisateur connecté, par ex. /api/user/{id}
-    // Si tu ne connais pas l'id, une solution c'est d'avoir un endpoint PUT /api/user/me
-    // Pour cet exemple, utilisons PUT /api/user/me
+    setIsSubmitting(true);
 
     const API_UPDATE_USER_URL = 'http://localhost:8000/api/user/me';
 
-    // Construction du payload à envoyer (à adapter selon backend)
-    // Ne pas oublier que le motDePasse doit être traité séparément côté backend s'il est modifié
-    const payload = {
-      nom: accountData.nom,
-      prenom: accountData.prenom,
-      pseudo: accountData.nomUtilisateur,
-      description: accountData.aPropos,
-      dateNaissance: accountData.dateNaissance,
-      genre: accountData.identiteGenre,
-      localisation: accountData.paysRegion,
-      langue: accountData.langue,
-      email: accountData.email,
-      // On n'envoie pas motDePasse ici pour éviter de modifier sans changement explicite, ou l'envoyer si modifié
-      pieceIdentite: accountData.pieceIdentite,
-    };
+    // Créer un objet FormData pour envoyer les fichiers et les autres données
+    const formData = new FormData();
+    formData.append('pseudo', accountData.nomUtilisateur);
+    formData.append('description', accountData.aPropos);
+    formData.append('localisation', accountData.paysRegion);
+    formData.append('email', accountData.email);
+
+    // Ajouter les fichiers s'ils ont été modifiés
+    if (accountData.photoProfil instanceof File) {
+      formData.append('photoProfil', accountData.photoProfil);
+    }
+    if (accountData.pieceIdentite instanceof File) {
+      formData.append('pieceIdentite', accountData.pieceIdentite);
+    }
+    // Note: Pour les autres champs comme nom, prenom, etc., ils ne sont pas présents
+    // dans votre backend simplifié. Je les ai donc retirés du `formData`.
+    // Si vous les ajoutez à votre entité User plus tard, vous devrez les ajouter ici.
 
     fetch(API_UPDATE_USER_URL, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
+        // Ne pas spécifier 'Content-Type': 'application/json' pour les requêtes FormData
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(payload),
+      body: formData,
     })
       .then(res => {
-        if (!res.ok) throw new Error('Erreur lors de la mise à jour');
-        alert('Changements enregistrés');
+        if (!res.ok) {
+          return res.json().then(errorData => {
+            throw new Error(errorData.message || 'Erreur lors de la mise à jour');
+          });
+        }
+        return res.json();
+      })
+      .then(() => {
+        alert('Changements enregistrés avec succès!');
+        navigate('/user-profile'); // Redirection vers la page de profil
       })
       .catch(err => {
         alert(err.message);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
   };
 
   const EditableInfoRow = ({ label, name, value, type = "text", options = [] }) => {
-    const isEditing = editMode[name] === true;
+    const [isEditing, setIsEditing] = useState(false);
 
     const onBlurEdit = () => {
-      toggleEdit(name, false);
+      setIsEditing(false);
     };
 
     const onClickRow = () => {
       if (name !== 'pieceIdentite') {
-        toggleEdit(name, true);
+        setIsEditing(true);
       }
     };
+
+    const displayValue = (value instanceof File) ? value.name : value;
 
     if (isEditing) {
       if (options.length > 0) {
@@ -215,7 +252,7 @@ const EditAccountPage = () => {
               <InputLabel>{label}</InputLabel>
               <Select
                 autoFocus
-                value={value}
+                value={displayValue}
                 onChange={(e) => handleChange(name, e.target.value)}
                 onBlur={onBlurEdit}
                 label={label}
@@ -240,7 +277,7 @@ const EditAccountPage = () => {
             autoFocus
             variant="standard"
             type={type}
-            value={value}
+            value={displayValue}
             onChange={(e) => handleChange(name, e.target.value)}
             onBlur={onBlurEdit}
             InputProps={{
@@ -267,18 +304,33 @@ const EditAccountPage = () => {
       >
         <Typography sx={{ color: '#333', fontWeight: 'normal' }}>{label}</Typography>
         <Typography sx={{ color: '#777', textAlign: 'right', flexGrow: 1, pr: 1 }}>
-          {value || (label === "À propos" ? "Ajoutez une description" : "")}
+          {displayValue || (label === "À propos" ? "Ajoutez une description" : "")}
         </Typography>
-        {name === 'pieceIdentite' ? (
+        {name === 'pieceIdentite' && (
           <Box onClick={(e) => { e.stopPropagation(); handleFileIconClick(); }} sx={{ cursor: 'pointer' }}>
             <PaperclipIcon />
           </Box>
-        ) : (
-          <ChevronIcon isOpen={false} />
         )}
+        {name !== 'pieceIdentite' && <ChevronIcon isOpen={false} />}
       </Box>
     );
   };
+  
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{
@@ -321,6 +373,7 @@ const EditAccountPage = () => {
         </Box>
         <Button
           variant="text"
+          onClick={handlePhotoClick}
           sx={{
             color: '#CF6B4D',
             textTransform: 'none',
@@ -331,6 +384,13 @@ const EditAccountPage = () => {
           Changer ma photo de profil
         </Button>
       </Box>
+      <input
+        type="file"
+        ref={photoInputRef}
+        onChange={handlePhotoChange}
+        accept="image/*"
+        style={{ display: 'none' }}
+      />
 
       <Box sx={{ width: '100%', mb: 4, px: { xs: 0, sm: 2 } }}>
         <EditableInfoRow label="Nom" name="nom" value={accountData.nom} />
@@ -362,6 +422,7 @@ const EditAccountPage = () => {
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
+          accept=".pdf"
           style={{ display: 'none' }}
         />
       </Box>
@@ -369,6 +430,7 @@ const EditAccountPage = () => {
       <Button
         variant="contained"
         onClick={handleSaveChanges}
+        disabled={isSubmitting}
         sx={{
           backgroundColor: '#CF6B4D',
           '&:hover': { backgroundColor: '#b75a3d' },
@@ -382,7 +444,7 @@ const EditAccountPage = () => {
           maxWidth: 400,
         }}
       >
-        Enregistrer les changements
+        {isSubmitting ? <CircularProgress size={24} /> : 'Enregistrer les changements'}
       </Button>
     </Box>
   );

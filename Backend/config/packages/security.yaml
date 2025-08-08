@@ -1,4 +1,3 @@
-# config/packages/security.yaml
 security:
     # Paramètres de hachage des mots de passe. 'auto' est une bonne valeur par défaut.
     password_hashers:
@@ -36,32 +35,21 @@ security:
             jwt: ~
             provider: app_user_provider # Le provider à utiliser pour récupérer l'utilisateur
 
-            # ATTENTION : L'option 'refresh_jwt' n'est PAS une option de pare-feu Symfony.
-            # Si vous utilisez un bundle comme GesdinetJWTRefreshTokenBundle, sa configuration
-            # se fait dans un fichier séparé (ex: config/packages/gesdinet_jwt_refresh_token.yaml)
-            # et il fournit sa propre route (ex: /api/token/refresh).
-            # Cette ligne a été supprimée car elle est la cause de l'erreur "Unrecognized option".
-
     # access_control : Gère les permissions d'accès aux routes
     # L'ORDRE EST EXTRÊMEMENT IMPORTANT ! Les règles sont lues du haut vers le bas.
-    # La PREMIÈRE règle qui correspond à l'URL et à la méthode est APPLIQUÉE, et les règles suivantes NE SONT PAS évaluées pour cette requête.
     access_control:
-        # 1. Autoriser l'accès à l'endpoint de connexion (login_check) sans authentification JWT.
-        # Utilisez le "$" pour assurer une correspondance exacte du chemin.
+        # 1. Autoriser l'accès à l'endpoint de connexion (login_check)
         - { path: ^/api/login_check$, methods: [OPTIONS, POST], roles: PUBLIC_ACCESS }
+        
+        # 2. Autoriser l'accès public aux routes de création et d'affichage (lecture)
         - { path: ^/api/signup, roles: PUBLIC_ACCESS }
-        - { path: ^/api/categorie$, methods: [GET], roles: PUBLIC_ACCESS }
-
-        # 2. Autoriser la création d'utilisateur (POST) sans authentification JWT.
-        # Utilisez le "$" pour assurer une correspondance exacte du chemin.
+        - { path: ^/api/categories$, methods: [GET], roles: PUBLIC_ACCESS }
         - { path: ^/api/user/user_create$, methods: [POST], roles: PUBLIC_ACCESS }
+        - { path: ^/api/services, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/services$, methods: [GET], roles: PUBLIC_ACCESS }
 
-        # Si vous utilisez GesdinetJWTRefreshTokenBundle, ajoutez sa route de rafraîchissement ici si elle est publique.
-        # - { path: ^/api/token/refresh$, methods: [POST], roles: PUBLIC_ACCESS }
-
-        # 3. Toutes les AUTRES routes sous /api nécessitent une authentification complète (un JWT valide).
-        # Cette règle DOIT IMPÉRATIVEMENT être la DERNIÈRE pour les chemins sous /api,
-        # afin que les règles PUBLIC_ACCESS spécifiques aient la priorité.
+        # 3. Toutes les AUTRES routes sous /api nécessitent une authentification complète
+        # Cette règle de "catch-all" DOIT rester la dernière.
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
     # Configuration spécifique pour l'environnement de test (facultatif)

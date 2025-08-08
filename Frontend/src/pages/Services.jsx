@@ -32,7 +32,7 @@ const ServicesPage = () => {
   const API_BASE_URL = 'http://localhost:8000/api/services';
 
   // Récupération token JWT si tu utilises JWT (adapter si non)
-  const token = localStorage.getItem('jwt_token');
+  const token = localStorage.getItem('token');
 
   useEffect(() => {
     // Chargement des services avec header Authorization (si besoin)

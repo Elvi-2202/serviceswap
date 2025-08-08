@@ -1,154 +1,134 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
+  Paper,
   List,
   ListItem,
   ListItemAvatar,
   Avatar,
   ListItemText,
-  Divider,
-  Paper,
-  Badge,
   IconButton,
-  useMediaQuery
-} from '@mui/material';
+  Divider,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
 import {
-  ArrowBack,
+  Delete as DeleteIcon,
   Notifications as NotificationsIcon,
-  CheckCircle,
-  Delete,
-  RateReview,
-  EventNote
-} from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+} from "@mui/icons-material";
 
 const NotificationsPage = () => {
-  const isSmall = useMediaQuery('(max-width:600px)');
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const notifications = [
-    {
-      id: 1,
-      title: 'Nouveau message',
-      content: 'Vous avez reçu un message de Jean D.',
-      time: 'Il y a 10 minutes',
-      read: false,
-      icon: 'message',
-    },
-    {
-      id: 2,
-      title: 'Échange confirmé',
-      content: 'Votre échange avec Marie L. a été confirmé',
-      time: 'Il y a 2 heures',
-      read: true,
-      icon: 'exchange',
-    },
-    {
-      id: 3,
-      title: 'Avis reçu',
-      content: 'Paul a laissé un avis sur votre dernier service',
-      time: 'Hier',
-      read: true,
-      icon: 'review',
-    },
-    {
-      id: 4,
-      title: 'Rappel',
-      content: 'N\'oubliez pas votre échange demain à 14h',
-      time: 'Il y a 1 jour',
-      read: false,
-      icon: 'reminder',
-    },
-  ];
+  const token = localStorage.getItem("token");
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'message':
-        return <NotificationsIcon color="primary" />;
-      case 'exchange':
-        return <CheckCircle color="success" />;
-      case 'review':
-        return <RateReview color="warning" />;
-      case 'reminder':
-        return <EventNote color="info" />;
-      default:
-        return <NotificationsIcon />;
-    }
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    fetch("http://localhost:8000/api/notifications", {
+      headers: { Authorization: token ? `Bearer ${token}` : "" },
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || "Erreur chargement notifications");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setNotifications(data);
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(e.message || "Erreur réseau");
+        setLoading(false);
+      });
+  }, [token]);
+
+  const deleteNotification = (id) => {
+    fetch(`http://localhost:8000/api/notifications/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur suppression notification");
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+      })
+      .catch((e) => alert(e.message));
   };
 
-  return (
-    <Box sx={{ bgcolor: '#F9FAFB', minHeight: '100vh', p: { xs: 1, sm: 3 } }}>
-      {/* ✅ Barre d’en-tête */}
-      <Paper elevation={1} sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <IconButton component={Link} to="/profile" edge="start">
-          <ArrowBack />
-        </IconButton>
-        <Typography variant={isSmall ? 'h6' : 'h5'} fontWeight={600}>
-          Mes Notifications
-        </Typography>
-      </Paper>
+  const markAsRead = (id) => {
+    fetch(`http://localhost:8000/api/notifications/${id}/read`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isRead: true }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur mise à jour notification");
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+        );
+      })
+      .catch((e) => alert(e.message));
+  };
 
-      {/* ✅ Liste des notifications */}
-      <Paper elevation={2} sx={{ borderRadius: 2 }}>
+  if (loading) return <CircularProgress />;
+
+  if (error)
+    return (
+      <Alert severity="error" sx={{ m: 3 }}>
+        {error}
+      </Alert>
+    );
+
+  return (
+    <Box sx={{ p: 2, bgcolor: "#F9FAFB", minHeight: "100vh" }}>
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        Mes Notifications
+      </Typography>
+      <Paper>
         <List>
           {notifications.map((notif) => (
             <React.Fragment key={notif.id}>
               <ListItem
-                alignItems="flex-start"
                 sx={{
-                  px: 2,
-                  py: 1.5,
-                  bgcolor: notif.read ? 'transparent' : '#FFF5F5',
-                  flexDirection: isSmall ? 'column' : 'row',
-                  gap: isSmall ? 1 : 0,
+                  bgcolor: notif.isRead ? "transparent" : "#e3f2fd",
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  if (!notif.isRead) markAsRead(notif.id);
                 }}
                 secondaryAction={
-                  <IconButton edge="end" aria-label="delete">
-                    <Delete />
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => deleteNotification(notif.id)}
+                  >
+                    <DeleteIcon />
                   </IconButton>
                 }
               >
                 <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: '#E0E0E0' }}>
-                    {getIcon(notif.icon)}
+                  <Avatar>
+                    <NotificationsIcon />
                   </Avatar>
                 </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <Typography
-                      variant="subtitle1"
-                      fontWeight={500}
-                      sx={{ display: 'flex', alignItems: 'center' }}
-                    >
-                      {notif.title}
-                      {!notif.read && (
-                        <Badge
-                          color="error"
-                          variant="dot"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </Typography>
-                  }
-                  secondary={
-                    <>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 0.5 }}
-                      >
-                        {notif.content}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {notif.time}
-                      </Typography>
-                    </>
-                  }
-                />
+                <ListItemText primary={notif.title} secondary={notif.content} />
               </ListItem>
               <Divider component="li" />
             </React.Fragment>
           ))}
+          {notifications.length === 0 && (
+            <Typography sx={{ p: 3, textAlign: "center" }}>
+              Aucune notification disponible.
+            </Typography>
+          )}
         </List>
       </Paper>
     </Box>

@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Button,
-  Grid,
-  useMediaQuery,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom'; // Pour la navigation
+import { useNavigate } from 'react-router-dom';
 
 // Icône de profil utilisateur en SVG inline
 const UserIcon = () => (
@@ -48,62 +47,62 @@ const PencilIcon = () => (
 );
 
 const UserProfilePage = () => {
-  const navigate = useNavigate(); // Hook pour la navigation
-  const isMobile = useMediaQuery('(max-width:600px)'); // Utilisé dans le JSX
+  const navigate = useNavigate();
 
-  // État pour les données utilisateur chargées depuis API
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // URL API pour récupérer l'utilisateur connecté (à adapter selon ta route)
   const API_USER_URL = 'http://localhost:8000/api/user/me';
 
-  // Récupérer token JWT depuis le stockage local (adapter si nécessaire)
-  const token = localStorage.getItem('jwt_token');
-
-  // Chargement des données utilisateur depuis API au montage
   useEffect(() => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setLoading(false);
+      setError("Vous n'êtes pas connecté. Veuillez vous authentifier.");
+      return;
+    }
+
     fetch(API_USER_URL, {
       headers: {
         'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : '',
+        Authorization: `Bearer ${token}`,
       },
     })
       .then((res) => {
-        if (!res.ok) throw new Error('Erreur lors du chargement des données utilisateur');
+        if (!res.ok) {
+          throw new Error('Erreur lors du chargement des données utilisateur');
+        }
         return res.json();
       })
       .then((data) => {
-        // Adapter le mapping des données reçues selon ton API et entité User
         setUserData({
           nom: data.nom || '',
           prenom: data.prenom || '',
-          nomUtilisateur: data.pseudo || '', // possible nom de champ différent dans API
+          pseudo: data.pseudo || '',
           aPropos: data.description || '',
           dateNaissance: data.dateNaissance || '',
           identiteGenre: data.genre || '',
           paysRegion: data.localisation || '',
           langue: data.langue || '',
           email: data.email || '',
-          motDePasse: '********', // Ne pas exposer le vrai mot de passe
+          motDePasse: '********',
           pieceIdentite: data.pieceIdentite || '',
         });
         setLoading(false);
       })
-      .catch((error) => {
-        console.error('Erreur chargement utilisateur :', error);
-        // En cas d’erreur, on peut set userData à null et loading à false
-        setUserData(null);
+      .catch((err) => {
+        console.error('Erreur chargement utilisateur :', err);
+        setError("Erreur lors de la récupération des données. Veuillez réessayer.");
         setLoading(false);
       });
-  }, [API_USER_URL, token]);
+  }, [API_USER_URL]);
 
   const handleEditClick = (field) => {
-    // Navigation vers page édition avec paramètre facultatif
     navigate('/edit-profile', { state: { fieldToEdit: field } });
   };
 
-  // Affichage ligne info utilisateur
   const InfoRow = ({ label, value }) => (
     <Box
       sx={{
@@ -124,11 +123,27 @@ const UserProfilePage = () => {
   );
 
   if (loading) {
-    return <Typography sx={{ p: 3, textAlign: "center" }}>Chargement du profil...</Typography>;
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
   }
 
   if (!userData) {
-    return <Typography sx={{ p: 3, textAlign: "center", color: 'error.main' }}>Impossible de charger les informations utilisateur.</Typography>;
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Alert severity="warning">Impossible de charger les informations utilisateur.</Alert>
+      </Box>
+    );
   }
 
   return (
@@ -145,12 +160,10 @@ const UserProfilePage = () => {
         boxSizing: 'border-box',
       }}
     >
-      {/* Titre de la page */}
       <Typography variant="h4" sx={{ mb: 3, textAlign: 'center', fontWeight: 'bold', color: '#333' }}>
         Mon Compte
       </Typography>
 
-      {/* Section photo de profil */}
       <Box
         sx={{
           display: 'flex',
@@ -179,7 +192,6 @@ const UserProfilePage = () => {
         >
           <UserIcon />
         </Box>
-        {/* Crayon d’édition */}
         <Box
           onClick={() => handleEditClick('profile')}
           sx={{
@@ -199,50 +211,14 @@ const UserProfilePage = () => {
           <PencilIcon />
         </Box>
       </Box>
-
-      {/* Boutons Mes Services / Mes Troc avec fullWidth responsive */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          mt: 3,
-          gap: 2,
-          flexDirection: { xs: 'column', sm: 'row' },
-          alignItems: { xs: 'stretch', sm: 'center' },
-          width: '100%',
-          maxWidth: 600,
-          px: { xs: 2, sm: 0 },
-        }}
-      >
-        <Button
-          variant="outlined"
-          startIcon={<Typography>📋</Typography>}
-          component={React.forwardRef((props, ref) => <a href="/services" ref={ref} {...props} />)}
-          fullWidth={isMobile}
-          sx={{ textTransform: 'none' }}
-        >
-          Mes Services
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<Typography>🔄</Typography>}
-          component={React.forwardRef((props, ref) => <a href="/troc" ref={ref} {...props} />)}
-          fullWidth={isMobile}
-          sx={{ textTransform: 'none' }}
-        >
-          Mes Troc
-        </Button>
-      </Box>
-
-      {/* Section Informations de base */}
+    
       <Box sx={{ width: '100%', mb: 4, px: { xs: 0, sm: 2 } }}>
         <InfoRow label="Nom" value={userData.nom} />
         <InfoRow label="Prénom" value={userData.prenom} />
-        <InfoRow label="Nom d'utilisateur" value={userData.nomUtilisateur} />
+        <InfoRow label="Nom d'utilisateur" value={userData.pseudo} />
         <InfoRow label="À propos" value={userData.aPropos} />
       </Box>
-
-      {/* Section Informations personnelles */}
+    
       <Box sx={{ width: '100%', mb: 4, px: { xs: 0, sm: 2 } }}>
         <Typography variant="h6" sx={{ mb: 2, color: '#333', fontWeight: 'bold' }}>
           Informations personnelles

@@ -1,4 +1,5 @@
 <?php
+// src/Entity/User.php
 
 namespace App\Entity;
 
@@ -9,37 +10,47 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
+#[ORM\Table(name: '`user`')]
+#[UniqueEntity(fields: ['email'], message: 'There is already an account with this email')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user:read', 'service:read', 'evaluation:read', 'message:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $pseudo = null;
 
     #[ORM\Column(length: 180, unique: true)]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $email = null;
 
-    #[ORM\Column(length: 255, nullable: true)] // Déjà corrigé pour 'localisation'
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $localisation = null;
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)] // <-- Correction ici : ajoutez nullable: true
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $description = null;
 
     #[ORM\Column(length: 255)]
     private ?string $password = null;
 
     #[ORM\Column(type: Types::JSON)]
+    #[Groups(['user:read', 'user:write'])]
     private array $roles = [];
 
     /**
      * @var Collection<int, Service>
      */
-    #[ORM\ManyToMany(targetEntity: Service::class, inversedBy: 'users')]
+    #[ORM\OneToMany(targetEntity: Service::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $services;
 
     /**
@@ -61,199 +72,94 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->evaluations = new ArrayCollection();
     }
 
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
+    public function getId(): ?int { return $this->id; }
 
-    public function getPseudo(): ?string
-    {
-        return $this->pseudo;
-    }
+    public function getPseudo(): ?string { return $this->pseudo; }
+    public function setPseudo(string $pseudo): static { $this->pseudo = $pseudo; return $this; }
 
-    public function setPseudo(string $pseudo): static
-    {
-        $this->pseudo = $pseudo;
+    public function getEmail(): ?string { return $this->email; }
+    public function setEmail(string $email): static { $this->email = $email; return $this; }
 
-        return $this;
-    }
+    public function getLocalisation(): ?string { return $this->localisation; }
+    public function setLocalisation(?string $localisation): static { $this->localisation = $localisation; return $this; }
 
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
+    public function getDescription(): ?string { return $this->description; }
+    public function setDescription(?string $description): static { $this->description = $description; return $this; }
 
-    public function setEmail(string $email): static
-    {
-        $this->email = $email;
+    public function getPassword(): ?string { return $this->password; }
+    public function setPassword(string $password): static { $this->password = $password; return $this; }
 
-        return $this;
-    }
-
-    public function getLocalisation(): ?string
-    {
-        return $this->localisation;
-    }
-
-    public function setLocalisation(?string $localisation): static
-    {
-        $this->localisation = $localisation;
-
-        return $this;
-    }
-
-    public function getDescription(): ?string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(?string $description): static // <-- Le type hint peut aussi être nullable ici
-    {
-        $this->description = $description;
-
-        return $this;
-    }
-
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
-    public function getPassword(): ?string
-    {
-        return $this->password;
-    }
-
-    public function setPassword(string $password): static
-    {
-        $this->password = $password;
-
-        return $this;
-    }
-
-    /**
-     * @see UserInterface
-     */
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
         $roles[] = 'ROLE_USER';
-
         return array_unique($roles);
     }
+    public function setRoles(array $roles): static { $this->roles = $roles; return $this; }
 
-    public function setRoles(array $roles): static
-    {
-        $this->roles = $roles;
+    public function getSalt(): ?string { return null; }
 
-        return $this;
-    }
-
-    /**
-     * @see UserInterface
-     */
-    public function getSalt(): ?string
-    {
-        return null;
-    }
-
-    /**
-     * @see UserInterface
-     */
     public function eraseCredentials(): void
     {
-        // If you store any temporary, sensitive data on the user, clear it here
-        // $this->plainPassword = null;
+        // Efface les données sensibles temporaires si nécessaire
     }
 
-    /**
-     * @see UserInterface
-     */
     public function getUserIdentifier(): string
     {
         return (string) $this->email;
     }
 
-    /**
-     * @return Collection<int, Service>
-     */
-    public function getServices(): Collection
-    {
-        return $this->services;
-    }
-
+    /** @return Collection<int, Service> */
+    public function getServices(): Collection { return $this->services; }
     public function addService(Service $service): static
     {
         if (!$this->services->contains($service)) {
             $this->services->add($service);
+            $service->setUser($this);
         }
-
         return $this;
     }
-
     public function removeService(Service $service): static
     {
-        $this->services->removeElement($service);
-
+        if ($this->services->removeElement($service) && $service->getUser() === $this) {
+            $service->setUser(null);
+        }
         return $this;
     }
 
-    /**
-     * @return Collection<int, Message>
-     */
-    public function getMessages(): Collection
-    {
-        return $this->messages;
-    }
-
+    /** @return Collection<int, Message> */
+    public function getMessages(): Collection { return $this->messages; }
     public function addMessage(Message $message): static
     {
         if (!$this->messages->contains($message)) {
             $this->messages->add($message);
             $message->setUser($this);
         }
-
         return $this;
     }
-
     public function removeMessage(Message $message): static
     {
-        if ($this->messages->removeElement($message)) {
-            // set the owning side to null (unless already changed)
-            if ($message->getUser() === $this) {
-                $message->setUser(null);
-            }
+        if ($this->messages->removeElement($message) && $message->getUser() === $this) {
+            $message->setUser(null);
         }
-
         return $this;
     }
 
-    /**
-     * @return Collection<int, Evaluation>
-     */
-    public function getEvaluations(): Collection
-    {
-        return $this->evaluations;
-    }
-
+    /** @return Collection<int, Evaluation> */
+    public function getEvaluations(): Collection { return $this->evaluations; }
     public function addEvaluation(Evaluation $evaluation): static
     {
         if (!$this->evaluations->contains($evaluation)) {
             $this->evaluations->add($evaluation);
             $evaluation->setUser($this);
         }
-
         return $this;
     }
-
     public function removeEvaluation(Evaluation $evaluation): static
     {
-        if ($this->evaluations->removeElement($evaluation)) {
-            // set the owning side to null (unless already changed)
-            if ($evaluation->getUser() === $this) {
-                $evaluation->setUser(null);
-            }
+        if ($this->evaluations->removeElement($evaluation) && $evaluation->getUser() === $this) {
+            $evaluation->setUser(null);
         }
-
         return $this;
     }
 }

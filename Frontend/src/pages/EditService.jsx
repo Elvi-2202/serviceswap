@@ -37,7 +37,7 @@ const EditServicePage = () => {
   const API_BASE_URL = 'http://localhost:8000/api/services';
 
   // Récupération token JWT dans localStorage si tu utilises JWT
-  const token = localStorage.getItem('jwt_token');
+  const token = localStorage.getItem('token');
 
   // --- GET service by id ---
   useEffect(() => {

@@ -1,136 +1,108 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
-  Button,
   Paper,
   List,
   ListItem,
   ListItemText,
-  Divider,
-  Avatar,
-  Chip,
   IconButton,
-  useMediaQuery,
-} from '@mui/material';
-import { CheckCircle, Cancel, RateReview } from '@mui/icons-material';
-import { Link } from 'react-router-dom';
+  Divider,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+import { Delete as DeleteIcon } from "@mui/icons-material";
 
-const TrocPage = () => {
-  const isSmall = useMediaQuery('(max-width:600px)');
+const TrocsPage = () => {
+  const [trocs, setTrocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const myTrades = [
-    {
-      id: 1,
-      serviceGiven: 'Ménage 2h',
-      serviceReceived: 'Cours de piano',
-      partner: 'Jean D.',
-      date: '15/06/2023',
-      status: 'completed',
-    },
-    {
-      id: 2,
-      serviceGiven: "Garde d'enfants",
-      serviceReceived: 'Réparation vélo',
-      partner: 'Marie L.',
-      date: '22/06/2023',
-      status: 'pending',
-    },
-  ];
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    fetch("http://localhost:8000/api/troc", {
+      headers: { Authorization: token ? `Bearer ${token}` : "" },
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "Erreur chargement trocs");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setTrocs(data);
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(e.message || "Erreur réseau");
+        setLoading(false);
+      });
+  }, [token]);
+
+  const deleteTroc = (id) => {
+    fetch(`http://localhost:8000/api/troc/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erreur suppression troc");
+        setTrocs((prev) => prev.filter((t) => t.id !== id));
+      })
+      .catch((e) => alert(e.message));
+  };
+
+  if (loading) return <CircularProgress />;
+
+  if (error)
+    return (
+      <Alert severity="error" sx={{ m: 3 }}>
+        {error}
+      </Alert>
+    );
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 }, bgcolor: '#F9FAFB', minHeight: '100vh' }}>
-      {/* 🧭 En-tête */}
-      <Typography
-        variant={isSmall ? 'h5' : 'h4'}
-        sx={{ mb: 3, fontWeight: 600, textAlign: 'center', color: '#333' }}
-      >
-        Mes Troc
+    <Box sx={{ p: 2, bgcolor: "#F9FAFB", minHeight: "100vh" }}>
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        Mes Trocs
       </Typography>
-
-      {/* 🗃️ Liste des trocs */}
-      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 } }}>
+      <Paper>
         <List>
-          {myTrades.map((trade) => (
-            <React.Fragment key={trade.id}>
+          {trocs.map((troc) => (
+            <React.Fragment key={troc.id}>
               <ListItem
-                alignItems="flex-start"
-                sx={{
-                  display: 'flex',
-                  flexDirection: isSmall ? 'column' : 'row',
-                  alignItems: isSmall ? 'flex-start' : 'center',
-                  gap: isSmall ? 1 : 2,
-                }}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => deleteTroc(troc.id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                }
               >
-                {/* 👥 Avatar */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: isSmall ? 1 : 0 }}>
-                  <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
-                    {trade.partner.charAt(0)}
-                  </Avatar>
-                </Box>
-
-                {/* 📜 Texte */}
                 <ListItemText
-                  primary={
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: isSmall ? 'column' : 'row',
-                        alignItems: isSmall ? 'flex-start' : 'center',
-                        gap: 1,
-                      }}
-                    >
-                      <Typography>
-                        J&apos;ai donné "{trade.serviceGiven}" contre "{trade.serviceReceived}"
-                      </Typography>
-                      <Chip
-                        label={trade.status === 'completed' ? 'Terminé' : 'En attente'}
-                        color={trade.status === 'completed' ? 'success' : 'warning'}
-                        size="small"
-                      />
-                    </Box>
-                  }
-                  secondary={`Avec ${trade.partner} — ${trade.date}`}
-                  secondaryTypographyProps={{
-                    mt: 0.5,
-                    color: 'text.secondary',
-                    fontSize: isSmall ? 13 : 14,
-                  }}
-                  sx={{ flex: 1 }}
+                  primary={`J'ai donné ${troc.serviceGiven} contre ${troc.serviceReceived}`}
+                  secondary={`Avec ${troc.partnerName} — ${new Date(
+                    troc.date
+                  ).toLocaleDateString()}`}
                 />
-
-                {/* ✅ / ❌ / ✍️ Actions */}
-                <Box
-                  sx={{
-                    display: 'flex',
-                    gap: 1,
-                    mt: isSmall ? 1.5 : 0,
-                    alignSelf: isSmall ? 'flex-end' : 'center',
-                  }}
-                >
-                  {trade.status === 'completed' ? (
-                    <IconButton edge="end" aria-label="rate">
-                      <RateReview />
-                    </IconButton>
-                  ) : (
-                    <>
-                      <IconButton edge="end" aria-label="accept">
-                        <CheckCircle color="success" />
-                      </IconButton>
-                      <IconButton edge="end" aria-label="reject">
-                        <Cancel color="error" />
-                      </IconButton>
-                    </>
-                  )}
-                </Box>
               </ListItem>
               <Divider component="li" />
             </React.Fragment>
           ))}
+          {trocs.length === 0 && (
+            <Typography sx={{ p: 3, textAlign: "center" }}>
+              Aucun troc disponible.
+            </Typography>
+          )}
         </List>
       </Paper>
     </Box>
   );
 };
 
-export default TrocPage;
+export default TrocsPage;
