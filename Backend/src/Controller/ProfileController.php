@@ -13,6 +13,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Symfony\Component\Serializer\SerializerInterface;
 
 // Ce contrôleur gère toutes les actions liées au profil de l'utilisateur connecté.
 // L'annotation IsGranted garantit que seul un utilisateur authentifié peut y accéder.
@@ -23,7 +24,8 @@ class ProfileController extends AbstractController
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly ValidatorInterface $validator,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly SerializerInterface $serializer // Injection du service de sérialisation
     ) {
     }
 
@@ -40,8 +42,11 @@ class ProfileController extends AbstractController
             return $this->json(['message' => 'User not found.'], Response::HTTP_NOT_FOUND);
         }
 
-        // Renvoie l'utilisateur en utilisant le groupe de sérialisation 'user:read'.
-        return $this->json($user, Response::HTTP_OK, [], ['groups' => 'user:read']);
+        // 💡 Correction : Utilise le sérialiseur pour renvoyer un JSON avec le groupe 'user:read'
+        // Cela garantit que seules les propriétés annotées avec ce groupe sont incluses.
+        $jsonContent = $this->serializer->serialize($user, 'json', ['groups' => 'user:read']);
+        
+        return new JsonResponse($jsonContent, Response::HTTP_OK, [], true);
     }
 
     /**
@@ -97,7 +102,10 @@ class ProfileController extends AbstractController
             return $this->json(['message' => 'An error occurred while updating the profile.'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        return $this->json($user, Response::HTTP_OK, [], ['groups' => 'user:read']);
+        // 💡 Correction : Utilise le sérialiseur pour renvoyer un JSON avec le groupe 'user:read'
+        $jsonContent = $this->serializer->serialize($user, 'json', ['groups' => 'user:read']);
+        
+        return new JsonResponse($jsonContent, Response::HTTP_OK, [], true);
     }
 
     /**

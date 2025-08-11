@@ -44,22 +44,11 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Simuler une récupération de données depuis une API
+  // 💡 NOUVEAU : Appel à l'API pour récupérer les données de l'utilisateur
   const fetchUserProfile = async () => {
-    // Récupérer le token de l'utilisateur
+    setLoading(true);
     const token = localStorage.getItem('token');
 
-    // Simuler un appel API
-    // En réalité, vous feriez : fetch('http://votre-api.com/api/user/profile', { headers: { Authorization: `Bearer ${token}` } })
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simule un délai de 1 seconde
-    
-    // Simuler des données utilisateur
-    const mockUserData = {
-      name: 'Elvira_K',
-      memberSince: 'juin 2023',
-    };
-    
-    // Simuler un cas d'erreur
     if (!token) {
       setError('Utilisateur non authentifié. Veuillez vous connecter.');
       setLoading(false);
@@ -67,16 +56,28 @@ const ProfilePage = () => {
     }
 
     try {
-      // Remplacez cette partie par votre appel API réel
-      // const response = await fetch('http://votre-api.com/api/user/profile', {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
-      // const userData = await response.json();
+      // 💡 REMPLACEZ L'URL CI-DESSOUS par votre route API de profil
+      const response = await fetch('http://localhost:8000/api/profile', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      setUser(mockUserData); // Utilisez userData à la place de mockUserData
+      if (!response.ok) {
+        throw new Error('Erreur de réseau ou token invalide.');
+      }
+      
+      const userData = await response.json();
+      
+      // Ajoutez une simulation pour 'memberSince' car il n'est pas dans votre entité
+      userData.memberSince = 'juin 2023';
+
+      setUser(userData); 
       setLoading(false);
 
-    } catch (e) { // La variable 'e' est maintenant utilisée
+    } catch (e) {
       setError(e.message || 'Erreur lors du chargement des informations de l\'utilisateur.');
       setLoading(false);
     }
@@ -139,10 +140,12 @@ const ProfilePage = () => {
             fontSize: { xs: '1.7rem', sm: '2rem' },
           }}
         >
-          {user.name.charAt(0)}
+          {/* 💡 Affiche la première lettre du pseudo */}
+          {user.pseudo?.charAt(0)}
         </Avatar>
         <Typography variant="h5" sx={{ mt: 1, fontWeight: 'bold', color: '#333' }}>
-          {user.name}
+          {/* 💡 Affiche le pseudo de l'utilisateur */}
+          {user.pseudo}
         </Typography>
         <Typography variant="subtitle2" color="text.secondary">
           Membre depuis {user.memberSince}
