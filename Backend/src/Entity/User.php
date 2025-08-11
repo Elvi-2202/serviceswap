@@ -1,5 +1,4 @@
 <?php
-// src/Entity/User.php
 
 namespace App\Entity;
 
@@ -12,6 +11,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Security\Core\User\LegacyPasswordAuthenticatedUserInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: '`user`')]
@@ -65,11 +65,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: Evaluation::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $evaluations;
 
+    /**
+     * @var Collection<int, Notification>
+     */
+    #[ORM\OneToMany(targetEntity: Notification::class, mappedBy: 'user', orphanRemoval: true)]
+    private Collection $notifications;
+
     public function __construct()
     {
         $this->services = new ArrayCollection();
         $this->messages = new ArrayCollection();
         $this->evaluations = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -99,9 +106,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getSalt(): ?string { return null; }
 
+    #[\Deprecated(since: '7.3', message: 'The method "%s" is deprecated.')]
     public function eraseCredentials(): void
     {
-        // Efface les données sensibles temporaires si nécessaire
+        // If you store any temporary, sensitive data on the user, clear it here
+        // $this->plainPassword = null;
     }
 
     public function getUserIdentifier(): string
@@ -159,6 +168,30 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         if ($this->evaluations->removeElement($evaluation) && $evaluation->getUser() === $this) {
             $evaluation->setUser(null);
+        }
+        return $this;
+    }
+
+    /** @return Collection<int, Notification> */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): static
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): static
+    {
+        if ($this->notifications->removeElement($notification) && $notification->getUser() === $this) {
+            // set the owning side to null (unless already changed)
+            $notification->setUser(null);
         }
         return $this;
     }

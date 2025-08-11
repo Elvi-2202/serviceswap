@@ -64,7 +64,7 @@ final class UserControllerTest extends WebTestCase
         $this->testUser->setPseudo('auth_user');
         $this->testUser->setLocalisation('TestLoc');
         $this->testUser->setDescription('TestDesc');
-        $this->testUser->setRoles(['ROLE_USER']); // <- important pour auth JWT
+        $this->testUser->setRoles(['ROLE_USER']);
         $this->testUser->setPassword($this->passwordHasher->hashPassword($this->testUser, 'password'));
         $this->manager->persist($this->testUser);
         $this->manager->flush();
@@ -181,14 +181,7 @@ final class UserControllerTest extends WebTestCase
 
     public function testEdit(): void
     {
-        $fixture = new User();
-        $fixture->setPseudo('test_edit_user');
-        $fixture->setEmail('test_edit_user' . uniqid() . '@example.com');
-        $fixture->setRoles(['ROLE_USER']);
-        $fixture->setPassword($this->passwordHasher->hashPassword($fixture, 'password'));
-        $this->manager->persist($fixture);
-        $this->manager->flush();
-
+        // On modifie l'utilisateur qui est déjà authentifié
         $updatedPayload = [
             'pseudo' => 'edited_user',
             'localisation' => 'EditedLoc',
@@ -196,7 +189,8 @@ final class UserControllerTest extends WebTestCase
 
         $this->getAuthenticatedClient()->request(
             Request::METHOD_PUT,
-            sprintf('%s/%s', $this->path, $fixture->getId()),
+            // On utilise l'ID de l'utilisateur authentifié
+            sprintf('%s/%s', $this->path, $this->testUser->getId()),
             [],
             [],
             ['CONTENT_TYPE' => 'application/json'],
@@ -206,7 +200,8 @@ final class UserControllerTest extends WebTestCase
         self::assertResponseIsSuccessful();
         self::assertResponseFormatSame('json');
 
-        $updatedUser = $this->userRepository->find($fixture->getId());
+        // On récupère l'utilisateur mis à jour depuis la base de données
+        $updatedUser = $this->userRepository->find($this->testUser->getId());
         self::assertNotNull($updatedUser);
         self::assertSame('edited_user', $updatedUser->getPseudo());
         self::assertSame('EditedLoc', $updatedUser->getLocalisation());
